@@ -11,7 +11,8 @@ __version__ = '0.0.0'
 
 # Version history
 # ---------------
-# 
+#
+from PyQt5.QtWidgets import QApplication
 from os.path import normpath, split, splitext, join, exists, isfile
 from pandas import read_excel
 from netCDF4 import Dataset, num2date
@@ -22,6 +23,7 @@ ERROR_STR = '*** Error *** '
 WARN_STR = '*** Warning *** '
 CNVRSN_FACT = 10000 * 365 / 1000  # gC/m**2/day to kgC/ha/yr
 OCHIDEE_MANDAT_VARS = ('lat', 'lon', 'veget', 'TOTAL_BM_LITTER_c')
+OCHIDEE_OVERRIDE_YEAR = 1970
 
 def check_ochidee_dset(nc_fname):
     """
@@ -86,6 +88,11 @@ class OchideeSet(object, ):
                 nyears = len(time_var)
                 start_date = num2date(int(time_var[0]), units=time_var.units, calendar=time_var.calendar)
                 start_year = start_date.year
+
+                start_year = OCHIDEE_OVERRIDE_YEAR
+                print('\t' + WARN_STR + 'Start year set to: {}'.format(start_year))                
+                QApplication.processEvents()
+
                 end_year = start_year + nyears - 1
 
         lat_frst = float(lats[0])
@@ -147,7 +154,7 @@ class OchideeSet(object, ):
             tmp_vals = nc_dset.variables['TOTAL_BM_LITTER_c'][:, pft_indx, :, :]
 
             if tmp_vals.sum() == 0.0:
-                print('\t' + WARN_STR + 'No data for PFT ' + pfts[pft_key])
+                print('\t' + WARN_STR + 'No data for vegetation type: ' + pft_key + ' PFT: ' + pfts[pft_key])
                 continue
 
             vals[pft_key] = tmp_vals

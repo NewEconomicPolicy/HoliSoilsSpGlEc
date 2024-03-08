@@ -25,8 +25,7 @@ from pandas import read_excel
 from time import sleep
 from glob import glob
 
-sleepTime = 5
-
+NOTEPAD_EXE_PATH = 'C:\\Windows\\System32\\notepad.exe'
 NGRANULARITY = 120
 
 WARN_STR = '*** Warning *** '
@@ -34,6 +33,19 @@ ERROR_STR = '*** Error *** '
 DUMMY_STR = 'dummy'
 SET_SPACER_LEN= 12
 SUPER_G_RUN_CNFGS = ('all', 'nsyn_grz', 'nsyn_mnr', 'grz_mnr', 'base_line')
+sleepTime = 5
+
+def fetch_notepad_path(sttngs):
+    """
+
+    """
+    if isfile(NOTEPAD_EXE_PATH):
+        sttngs['notepad_path'] = NOTEPAD_EXE_PATH
+    else:
+        print(WARN_STR + 'Could not find notepad exe file - usually here: ' + NOTEPAD_EXE_PATH)
+        sttngs['notepad_path'] = None
+
+    return
 
 def formatSize(bytes):
     """
@@ -63,7 +75,7 @@ def check_runsites(setup_file, settings, config_dir, runsites_config_fn, python_
     # file to run Ecosse
     # ==================
     if isfile(runsites_py):
-        print('Will use ECOSSE run script : ' + runsites_py)
+        print('\nWill use ECOSSE run script : ' + runsites_py)
     else:
         print(WARN_STR + '\tECOSSE run script ' + runsites_py + ' does not exist')
         run_ecosse_flag = False
@@ -140,6 +152,10 @@ def build_and_display_studies(form, glbl_ecsse_str):
         form.combo00s.clear()
         for study in studies:
             form.combo00s.addItem(study)
+    if hasattr(form, 'w_combo00s'):
+        form.w_combo00s.clear()
+        for study in studies:
+            form.w_combo00s.addItem(study)
 
     return config_files
 
@@ -233,26 +249,49 @@ def write_study_definition_file(form, glbl_ecss_variation = None):
 
     # prepare the bounding box
     # ========================
-    try:
-        ll_lon = float(form.w_ll_lon.text())
-        ll_lat = float(form.w_ll_lat.text())
-        ur_lon = float(form.w_ur_lon.text())
-        ur_lat = float(form.w_ur_lat.text())
-    except ValueError:
+    # if glbl_ecss_variation == 'jm2'
+
+    if glbl_ecss_variation is None:
+        try:
+            ll_lon = float(form.w_ll_lon.text())
+            ll_lat = float(form.w_ll_lat.text())
+            ur_lon = float(form.w_ur_lon.text())
+            ur_lat = float(form.w_ur_lat.text())
+        except ValueError:
+            ll_lon = 0.0
+            ll_lat = 0.0
+            ur_lon = 0.0
+            ur_lat = 0.0
+    else:
         ll_lon = 0.0
         ll_lat = 0.0
         ur_lon = 0.0
         ur_lat = 0.0
+
     bbox =  list([ll_lon,ll_lat,ur_lon,ur_lat])
     study = form.w_study.text()
     if study == '':
         study = 'xxxx'
 
-    wthr_rsrce = form.combo10w.currentText()
-    if wthr_rsrce == 'CRU':
-        fut_clim_scen = form.combo10.currentText()
+    if hasattr(form, 'combo10w') or hasattr(form, 'w_combo10w'):
+        if hasattr(form, 'combo10w'):
+            wthr_rsrce = form.combo10w.currentText()
+        else:
+            wthr_rsrce = form.w_combo10w.currentText()
+
+        if wthr_rsrce == 'CRU':
+            if hasattr(form, 'combo10w'):
+                fut_clim_scen = form.combo10.currentText()
+            else:
+                fut_clim_scen = form.w_combo10.currentText()
+        else:
+            fut_clim_scen = wthr_rsrce
     else:
-        fut_clim_scen = wthr_rsrce
+        wthr_rsrce = form.sttngs['wthr_rsrc']
+        if hasattr(form, 'combo10w'):
+            fut_clim_scen = form.combo10s.currentText()
+        else:
+            fut_clim_scen = form.w_combo10s.currentText()
 
     # construct land_use change - not elegant but adequate
     # =========================
@@ -289,6 +328,23 @@ def write_study_definition_file(form, glbl_ecss_variation = None):
     else:
         sims_dir = form.sims_dir
 
+    if hasattr(form, 'combo09s'):
+        lta_strt_yr = form.combo09s.currentText()
+        lta_end_yr = form.combo09e.currentText()
+    else:
+        lta_strt_yr, lta_end_yr = (1988, 2018)
+
+    if hasattr(form, 'combo011s'):
+        sim_strt_yr = form.combo11s.currentText()
+        sim_end_yr = form.combo11e.currentText()
+    else:
+        sim_strt_yr, sim_end_yr = (2020, 2079)
+
+    if hasattr(form, 'req_resol_deg'):
+        req_resol_deg = form.req_resol_deg
+    else:
+        req_resol_deg = 1
+
     study_defn = {
         'studyDefn': {
             'dailyMode': daily_mode,
@@ -297,14 +353,14 @@ def write_study_definition_file(form, glbl_ecss_variation = None):
             'hwsdCsvFname' : hwsd_csv_fname,
             'study'    : study,
             'land_use' : land_use,
-            'histStrtYr': form.combo09s.currentText(),
-            'histEndYr' : form.combo09e.currentText(),
+            'histStrtYr': lta_strt_yr,
+            'histEndYr' : lta_end_yr,
             'climScnr' : fut_clim_scen,
-            'futStrtYr': form.combo11s.currentText(),
-            'futEndYr' : form.combo11e.currentText(),
+            'futStrtYr': sim_strt_yr,
+            'futEndYr' : sim_end_yr,
             'cropName' : crop_name,
             'province' : 'xxxx',
-            'resolution' : form.req_resol_deg,
+            'resolution' : req_resol_deg,
             'shpe_file': 'xxxx',
             'version'  : form.version
             }
@@ -390,12 +446,7 @@ def read_crop_pars_codes(crop_pars_fname, required_crops, nset_lines = 9):
         if nline_nxt >= nlines:
             break
 
-        try:
-            code = int(lines[nline_nxt].strip())
-        except ValueError:
-            print(ERROR_STR + 'reading file : ' + crop_pars_fname)
-            break
-
+        code = int(lines[nline_nxt].strip())
         if crop_name in required_crops:
             crop_codes[crop_name] = code
 
@@ -536,7 +587,8 @@ def write_signature_file(sim_dir, mu_global, soil, latitude, longitude, province
 
     return
 
-def write_manifest_file(study, fut_clim_scen, sim_dir, soil_list, mu_global, latitude, longitude, area):
+def write_manifest_file(study, fut_clim_scen, sim_dir, soil_list, mu_global,
+                                                                    latitude, longitude, area, osgb_flag=False):
     """
     write json consisting of mu_global and soil shares for each grid cell
     """
@@ -568,7 +620,11 @@ def write_manifest_file(study, fut_clim_scen, sim_dir, soil_list, mu_global, lat
     # construct file name and write
     # =============================
     manif_dir, fname_part2 = split(sim_dir)
-    manifest_fname = join(manif_dir, 'manifest_' + fname_part2[:-4] + '.txt')
+    if osgb_flag:
+        manifest_fname = join(manif_dir, 'manifest_' + fname_part2 + '.txt')
+    else:
+        manifest_fname = join(manif_dir, 'manifest_' + fname_part2[:-4] + '.txt')
+
     with open(manifest_fname, 'w') as fmanif:
         json_dump(manifest, fmanif, indent=2, sort_keys=True)
 

@@ -25,24 +25,31 @@ try:
 except ModuleNotFoundError as err:
     print(str(err))
 
+ERROR_STR = '*** Error *** '
 MAX_LOG_FILES = 10
 sleepTime = 5
 
 def set_up_logging(form, appl_name, lggr_flag = False):
-    '''
+    """
+    set up logging
+    """
+    if not hasattr(form, 'settings'):
+        print(ERROR_STR + 'could not setup logging, form object must have settings attribute')
+        return
 
-    '''
+    if 'log_dir' not in form.settings:
+        print(ERROR_STR + 'could not setup logging, settings dictionary must have log_dir attribute')
+        return
+
+    log_dir = form.settings['log_dir']
+    if not isdir(log_dir):
+        makedirs(log_dir)
 
     # string to uniquely identify log files
     # =====================================
     date_stamp = strftime('_%Y_%m_%d_%I_%M_%S')
     log_file_name = appl_name + date_stamp + '.log'
 
-    # set up logging
-    # ==============
-    log_dir = form.settings['log_dir']
-    if not isdir(log_dir):
-        makedirs(log_dir)
 
     log_fname = join(log_dir, log_file_name)
 

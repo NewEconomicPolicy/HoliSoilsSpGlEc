@@ -100,7 +100,7 @@ def print_resource_locations(setup_file, config_dir, hwsd_dir, wthr_dir, lta_nc_
     """
     report settings
     """
-    print('Resource locations:')
+    print('\nResource locations:')
     print('\tsetup file:          ' + setup_file)
     print('\tconfiguration files: ' + config_dir)
     print('\tHWSD database:       ' + hwsd_dir)
