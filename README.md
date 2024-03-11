@@ -1,1 +1,1 @@
-# GlblEcssLtdSpVc is the Holisoils variation of Global Ecosse
+# Thia is the spatial variation of Global Ecosse for the HoliSoils project
