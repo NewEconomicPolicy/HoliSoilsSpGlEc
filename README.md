@@ -1,1 +1,1 @@
-# Thia is the spatial variation of Global Ecosse for the HoliSoils project
+# This is the spatial variation of Global Ecosse for the HoliSoils project
