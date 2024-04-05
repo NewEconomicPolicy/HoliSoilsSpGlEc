@@ -1,10 +1,11 @@
 rem 
 @set setup_dir=E:\AbUniv\GlobalEcosseSuite\setup\
-@set source_dir=G:\AbUnivGit\HoliSoilsSpGlEc\
+@set source_dir=G:\AbUnivGit\HoliSoilsSpGlEc\GlblEcssLtdSpVc\
 @set envmdlng_dir=G:\AbUnivGit\EnvMdllngModuls\
-@set PYTHONPATH=%envmdlng_dir%EnvModelModules;%source_dir%GlblEcosseModulesLtd
+@set python_exe=E:\Python38\python.exe
+@set PYTHONPATH=%envmdlng_dir%EnvModelModules;%envmdlng_dir%GlblEcosseModulesLtd
 
 @set initial_working_dir=%cd%
 @chdir /D %setup_dir%ltd_data
-start cmd.exe /k "E:\Python38\python.exe -W ignore %source_dir%GlblEcssLtdSpVc\GlblEcsseHwsdGUI.py"
+start cmd.exe /k "%python_exe% -W ignore %source_dir%GlblEcsseHwsdGUI.py"
 @chdir /D %initial_working_dir%
