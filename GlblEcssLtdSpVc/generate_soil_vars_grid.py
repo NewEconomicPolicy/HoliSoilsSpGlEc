@@ -24,19 +24,15 @@ from netCDF4 import Dataset
 from PyQt5.QtWidgets import QApplication
 
 import make_ltd_data_files
-import getClimGenNC
 import hwsd_bil
 
 from hwsd_mu_globals_fns import gen_grid_cells_for_band
-from litter_and_orchidee_fns import resize_yrs_pi
 from prepare_ecosse_files import update_progress, make_ecosse_file
 from glbl_ecss_cmmn_cmpntsGUI import calculate_grid_cell
-from getClimGenFns import check_clim_nc_limits, associate_climate
-from mngmnt_fns_and_class import ManagementSet, check_mask_location, get_hilda_land_uses
 
-def _generate_ecosse_files(form, climgen, mask_defn, num_band):
+def _generate_soil_files(form, num_band):
     """
-    Main loop for generating ECOSSE outputs
+    Main loop for generating soil data outputs
     """
     func_name =  __prog__ + '\t_generate_soil_files'
 
@@ -86,50 +82,14 @@ def _generate_ecosse_files(form, climgen, mask_defn, num_band):
         print(mess); form.lgr.info(mess)
         return
 
-    # 4.5 = estimated mean number of dominant soils per cell
-    est_num_sims = 0
-    for site_rec in aoi_res:
-        est_num_sims += len(site_rec[-1])
-    est_num_sims = int(est_num_sims * 4.5)
-    mess = 'Generated {} Area of Interest grid cell records for band {} which will result in an estimated {} simulations'\
-                                    .format(num_meta_cells, num_band, est_num_sims)
+    mess = 'Generated {} Area of Interest grid cells for band {} '.format(num_meta_cells, num_band)
     form.lgr.info(mess); print(mess)
+
+    print('Writing soil data for band {}...'.format(num_band))
     QApplication.processEvents()
-
-    # generate weather dataset indices which enclose the AOI for this band
-    aoi_indices_fut, aoi_indices_hist = climgen.genLocalGrid(bbox, hwsd, snglPntFlag)
-
-    print('Getting future weather data for band {}'.format(num_band) )
-    QApplication.processEvents()
-    #      =============================
-    wthr_rsrc = climgen.weather_resource
-
-    if wthr_rsrc == 'EObs':
-        pettmp_fut = climgen.fetch_eobs_NC_data(aoi_indices_fut, num_band)
-    else:
-        pettmp_fut = climgen.fetch_cru_future_NC_data(aoi_indices_fut, num_band)
-
-    print('Getting historic weather data for band {}'.format(num_band) )
-    QApplication.processEvents()
-    #      ==============================
-    if wthr_rsrc == 'EObs':
-        pettmp_hist = climgen.fetch_eobs_NC_data(aoi_indices_fut, num_band, future_flag = False)
-    else:
-        pettmp_hist = climgen.fetch_cru_historic_NC_data(aoi_indices_hist, num_band)
-
-    print('Creating simulation files for band {}...'.format(num_band))
-    QApplication.processEvents()
-    #      =========================================
 
     # open land use NC dataset
     # ========================
-    if mask_defn is not None:
-        mask_defn.nc_dset = Dataset(mask_defn.nc_fname, mode='r')
-
-    strt_year = form.litter_defn.start_year
-    pft_name = form.w_combo_pfts.currentText()
-    pft_key = list({elem for elem in form.pfts if form.pfts[elem] == pft_name})[0]
-
     last_time = time.time()
     start_time = time.time()
     completed = 0
@@ -139,60 +99,20 @@ def _generate_ecosse_files(form, climgen, mask_defn, num_band):
     warn_count = 0
     no_pis = 0
 
-    if mask_defn is not None:
-        land_uses = get_hilda_land_uses(form.w_hilda_lus)
-
-    # generate sets of Ecosse files for each site where each site has one or more soils
     # each soil can have one or more dominant soils
     # =======================================================================
     for site_indx, site_rec in enumerate(aoi_res):
 
-        pettmp_grid_cell = associate_climate(site_rec, climgen, pettmp_hist, pettmp_fut)
-        if len(pettmp_grid_cell) == 0:
-            print('*** Warning *** no weather data for site with lat: {}\tlon: {}'
-                                                        .format(round(site_rec[2],3), round(site_rec[3],3)))
-            continue
-
-        # land use mask
-        # =============
-        if mask_defn is not None:            
-            if check_mask_location(mask_defn, site_rec, land_uses, form.req_resol_deg):
-                landuse_yes += 1
-            else:
-                landuse_no += 1
-                skipped += 1
-                continue
-
         gran_lat, gran_lon, lat, long, area, mu_globals_props = site_rec
-        if len(pettmp_grid_cell['precipitation'][0]) == 0:
-            mess = 'No weather data for lat/lon: {}/{}\t'.format(lat, long, gran_lat, gran_lon)
-            mess += 'granular lat/lon: {}/{}'.format(lat, long, gran_lat, gran_lon)
-            form.lgr.info(mess)
-            skipped += 1
-        else:
-            yrs_pi = form.litter_defn.get_ochidee_nc_data(pft_key, lat, long)
-            if yrs_pi is None:
-                continue
 
-            if all(val == 0 for val in yrs_pi['pis']):
-                no_pis += 1
-                continue
-
-            yrs_pi = resize_yrs_pi(climgen.sim_start_year, climgen.sim_end_year, yrs_pi)
-
-            # create limited data object
-            # ==========================
-            ltd_data = make_ltd_data_files.MakeLtdDataFiles(form, climgen, yrs_pi, comments=True)
-            make_ecosse_file(form, climgen, ltd_data, site_rec, study, pettmp_grid_cell)
-            completed += 1
+        # create limited data object
+        # ==========================
+        # TODO: ltd_data = make_ltd_data_files.MakeLtdDataFiles(form, comments=True)
+        # TODO: make_ecosse_file(form, ltd_data, site_rec, study)
+        completed += 1
 
         last_time = update_progress(last_time, start_time, completed, num_meta_cells, skipped, warn_count)
         QApplication.processEvents()
-
-    # close plant input NC dataset
-    # ============================
-    if mask_defn is not None:
-        mask_defn.nc_dset.close()
 
     mess = '\nBand: {}\tLU yes: {}  LU no: {}\t'.format(num_band, landuse_yes, landuse_no)
     mess += 'skipped: {}\tcompleted: {}\tno plant inputs: {}'.format(skipped, completed, no_pis)
@@ -201,7 +121,7 @@ def _generate_ecosse_files(form, climgen, mask_defn, num_band):
     print('')   # spacer
     return
 
-def generate_banded_sims(form):
+def generate_soil_outputs(form):
     '''
     called from GUI
     '''
@@ -216,10 +136,10 @@ def generate_banded_sims(form):
 
     # make sure bounding box is correctly set
     # =======================================
-    lon_ll = form.litter_defn.lon_frst
-    lat_ll = form.litter_defn.lat_frst
-    lon_ur = form.litter_defn.lon_last
-    lat_ur = form.litter_defn.lat_last
+    lon_ll = -10.25
+    lat_ll = 35.25
+    lon_ur = 34.75
+    lat_ur = 69.75
     form.bbox =  list([lon_ll, lat_ll, lon_ur, lat_ur])
 
     # lat_ll_aoi is the floor i.e. least latitude, of the HWSD aoi which marks the end of the banding loop
@@ -235,26 +155,6 @@ def generate_banded_sims(form):
     if (lon_ur < lon_ll_aoi) or (lon_ll > lon_ur_aoi) or  (lat_ur < lat_ll_aoi) or (lat_ll > lat_ur_aoi):
         print('Error: Study bounding box and HWSD CSV file do not overlap - no simulations are possible')
         return
-
-    # weather choice
-    # ==============
-    weather_resource = form.combo10w.currentText()
-
-    # check requested AOI coordinates against extent of the weather resource dataset
-    # ==============================================================================
-    if check_clim_nc_limits(form, weather_resource):
-        print('Selected ' + weather_resource)
-        form.historic_weather_flag = weather_resource
-        form.future_climate_flag   = weather_resource
-    else:
-        return
-
-    # mask
-    # ====
-    if form.mask_fn is None or form.w_hilda_lus['all'].isChecked():
-        mask_defn = None
-    else:
-        mask_defn = ManagementSet(form.mask_fn, 'cropmasks')
 
     # ============================ for each PFT end =====================================
     # print('Study bounding box and HWSD CSV file overlap')
@@ -283,10 +183,6 @@ def generate_banded_sims(form):
     form.hwsd_mu_globals.bad_mu_globals = [0] +  hwsd.bad_muglobals
     del(hwsd); del(soil_recs)
 
-    # create climate object
-    # =====================
-    climgen = getClimGenNC.ClimGenNC(form)
-
     # main banding loop
     # =================
     lat_step = 0.5
@@ -311,7 +207,7 @@ def generate_banded_sims(form):
                   .format(num_band, nsteps, round(lat_ll_new,6), round(lat_ur, 6)))
             QApplication.processEvents()
 
-            _generate_ecosse_files(form, climgen, mask_defn, num_band)  # does actual work
+            _generate_soil_files(form, num_band)  # does actual work
 
         # check to see if the last band is completed
         if lat_ll_aoi > lat_ll_new or num_band == nsteps:

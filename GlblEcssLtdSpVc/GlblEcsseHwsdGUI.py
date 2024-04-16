@@ -24,6 +24,7 @@ from common_componentsGUI import (exit_clicked, commonSection, changeConfigFile,
 from glbl_ecss_cmmn_cmpntsGUI import calculate_grid_cell, grid_resolutions
 
 from glbl_ecsse_high_level_sp import generate_banded_sims
+from generate_soil_vars_grid import generate_soil_outputs
 
 from weather_datasets import change_weather_resource
 from initialise_funcs import read_config_file
@@ -225,13 +226,23 @@ class Form(QWidget):
         w_exit.setFixedWidth(STD_BTN_SIZE_80)
         w_exit.clicked.connect(self.exitClicked)
 
+        # =============================================
+        irow += 1
         w_clear = QPushButton("Clean sims")
         helpText = 'Remove all simulation files for this study'
         w_clear.setToolTip(helpText)
         w_clear.setFixedWidth(STD_BTN_SIZE_80)
         w_clear.setEnabled(False)
-        grid.addWidget(w_clear, irow, 7)
+        grid.addWidget(w_clear, irow, 0)
         w_clear.clicked.connect(self.cleanlicked)
+
+        w_soil_outpts = QPushButton("Make soil files")
+        helpText = 'Generate CSV data of soil carbon (Dominant), pH and bulk density for the HoliSoils project'
+        w_soil_outpts.setToolTip(helpText)
+        w_soil_outpts.setFixedWidth(STD_BTN_SIZE_100)
+        grid.addWidget(w_soil_outpts, irow, 1)
+        w_soil_outpts.clicked.connect(self.genSoilOutptsClicked)
+        self.w_soil_outpts = w_soil_outpts
 
         # LH vertical box consists of png image
         # =====================================
@@ -284,6 +295,12 @@ class Form(QWidget):
         read_config_file(self)
 
         self.combo10w.currentIndexChanged[str].connect(self.weatherResourceChanged)
+
+    def genSoilOutptsClicked(self):
+        """
+
+        """
+        generate_soil_outputs(self)
 
     def changePlntFncType(self):
         """
