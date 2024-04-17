@@ -1,18 +1,15 @@
 """
 #-------------------------------------------------------------------------------
-# Name:        hwsd_glblecsse_fns.py
+# Name:
 # Purpose:     consist of high level functions invoked by main GUI
 # Author:      Mike Martin
 # Created:     11/12/2015
 # Licence:     <your licence>
 # Description:
-#   comprises two functions:
-#       def _write_to_soil_files(form, climgen,  mask_defn, num_band)
-#       def generate_banded_sims(form)
+#
 #-------------------------------------------------------------------------------
 #
 """
-
 __prog__ = 'glbl_ecsse_high_level_sp.py'
 __version__ = '0.0.1'
 __author__ = 's03mm5'
@@ -38,7 +35,7 @@ def _generate_ecosse_files(form, climgen, mask_defn, num_band):
     """
     Main loop for generating ECOSSE outputs
     """
-    func_name =  __prog__ + '\t_write_to_soil_files'
+    func_name =  __prog__ + '\t_generate_ecosse_files'
 
     study = form.study
     print('Gathering soil and climate data for study {}...\t\tin {}'.format(study,func_name))
