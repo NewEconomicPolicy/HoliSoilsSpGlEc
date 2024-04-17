@@ -7,38 +7,73 @@
 # Licence:     <your licence>
 # Description:
 #   comprises two functions:
-#       def _generate_soil_files(form, climgen,  mask_defn, num_band)
+#       def _write_to_soil_files(form, climgen,  mask_defn, num_band)
 #       def generate_banded_sims(form)
 #-------------------------------------------------------------------------------
 #
 """
-
-__prog__ = 'glbl_ecsse_high_level_sp.py'
+__prog__ = 'generate_soil_vars_grid.py'
 __version__ = '0.0.1'
 __author__ = 's03mm5'
 
 import time
+import csv
+from os.path import join, split, isdir
+from os import remove, mkdir
 from operator import itemgetter
 from copy import copy
 from netCDF4 import Dataset
 from PyQt5.QtWidgets import QApplication
 
-import make_ltd_data_files
+from glbl_ecsse_high_level_sp import simplify_soil_recs, _simplify_aoi
 import hwsd_bil
 
 from hwsd_mu_globals_fns import gen_grid_cells_for_band
 from prepare_ecosse_files import update_progress, make_ecosse_file
 from glbl_ecss_cmmn_cmpntsGUI import calculate_grid_cell
 
-def _generate_soil_files(form, num_band):
+class SoilCsvOutputs(object):
+    """
+    Class to write CSV files of soil data
+    """
+    def __init__(self, form):
+
+        self.lgr = form.lgr
+        self.hdrs = ['latitude', 'longitude', 'mu_global']
+        self.metrics = list(['soil_c', 'bulk_dens', 'ph'])
+        soil_dir = join(split(form.sims_dir)[0], 'soil_metrics')
+        if not isdir(soil_dir):
+            mkdir(soil_dir)
+
+        self.soil_dir = soil_dir
+        self.study = form.w_study.text()
+
+    def create_soil_files(self):
+        """
+        Create empty results files
+        """
+        self.output_fhs = {}
+        self.writers = {}
+        for metric in self.metrics:
+            hdr_rec = self.hdrs + [metric]
+
+            fname = join(self.soil_dir, metric + '.txt')
+            try:
+                self.output_fhs[metric] = open(fname, 'w', newline='')
+            except (OSError, IOError) as err:
+                err_mess = 'Unable to open output file. {}'.format(err)
+                self.lgr.critical(err_mess)
+                print(err_mess)
+
+            self.writers[metric] = csv.writer(self.output_fhs[metric], delimiter='\t')
+            self.writers[metric].writerow(hdr_rec)
+        return
+
+def _write_to_soil_files(form, soil_csvs, num_band):
     """
     Main loop for generating soil data outputs
     """
-    func_name =  __prog__ + '\t_generate_soil_files'
-
-    study = form.study
-    print('Gathering soil and climate data for study {}...\t\tin {}'.format(study,func_name))
-    snglPntFlag = False
+    print('Gathering soil data for band {}'.format(num_band))
 
     # instantiate a soil grid and climate objects
     hwsd = hwsd_bil.HWSD_bil(form.lgr, form.hwsd_dir)
@@ -94,37 +129,44 @@ def _generate_soil_files(form, num_band):
     start_time = time.time()
     completed = 0
     skipped = 0
-    landuse_yes = 0
-    landuse_no = 0
     warn_count = 0
-    no_pis = 0
 
     # each soil can have one or more dominant soils
     # =======================================================================
-    for site_indx, site_rec in enumerate(aoi_res):
-
+    for site_rec in aoi_res:
         gran_lat, gran_lon, lat, long, area, mu_globals_props = site_rec
+        for pair in mu_globals_props.items():
+            mu_global, proportion = pair
+            # area_for_soil = area * proportion
 
-        # create limited data object
-        # ==========================
-        # TODO: ltd_data = make_ltd_data_files.MakeLtdDataFiles(form, comments=True)
-        # TODO: make_ecosse_file(form, ltd_data, site_rec, study)
+            soil_list = form.hwsd_mu_globals.soil_recs[mu_global]
+
+            # soil_c, bulk_dens, ph = soil[:3]
+            # ===============================
+            for soil in soil_list:
+                for metric, val in zip(soil_csvs.metrics, soil[:3]):
+                    out_rec = list([lat, long, mu_global, val])
+                    soil_csvs.writers[metric].writerow(out_rec)
+
         completed += 1
-
         last_time = update_progress(last_time, start_time, completed, num_meta_cells, skipped, warn_count)
         QApplication.processEvents()
 
-    mess = '\nBand: {}\tLU yes: {}  LU no: {}\t'.format(num_band, landuse_yes, landuse_no)
-    mess += 'skipped: {}\tcompleted: {}\tno plant inputs: {}'.format(skipped, completed, no_pis)
+    mess = '\nBand: {}\tskipped: {}\tcompleted: {}'.format(num_band, skipped, completed)
     print(mess); QApplication.processEvents()
 
     print('')   # spacer
-    return
+    return completed
 
 def generate_soil_outputs(form):
     '''
     called from GUI
     '''
+    if hasattr(form, 'w_max_cells'):
+        max_cells = int(form.w_max_cells.text())
+    else:
+        max_cells = 100000000
+
     if form.hwsd_mu_globals == None:
         print('Undetermined HWSD aoi - please select a valid HSWD csv file')
         return
@@ -180,34 +222,41 @@ def generate_soil_outputs(form):
         del(soil_recs[mu_global])
 
     form.hwsd_mu_globals.soil_recs = simplify_soil_recs(soil_recs, use_dom_soil_flag)
-    form.hwsd_mu_globals.bad_mu_globals = [0] +  hwsd.bad_muglobals
+    form.hwsd_mu_globals.bad_mu_globals = [0] + hwsd.bad_muglobals
     del(hwsd); del(soil_recs)
+
+    # Create empty soil files
+    soil_csvs = SoilCsvOutputs(form)
+    soil_csvs.create_soil_files()
 
     # main banding loop
     # =================
+    ncompleted = 0
     lat_step = 0.5
     nsteps = int((lat_ur-lat_ll)/lat_step) + 1
     for isec in range(nsteps):
         lat_ll_new = lat_ur - lat_step
         num_band = isec + 1
-        '''
-        if num_band > 2:       # TODO remove when no longer needed
+
+        if num_band > 3:       # TODO remove when no longer needed
             print('Exiting from processing after {} bands'.format(num_band - 1))
             break
-        '''
+
         # if the latitude floor of the band has not reached the ceiling of the HWSD aoi then skip this band
         if lat_ll_new > form.hwsd_mu_globals.lat_ur_aoi or num_band < start_at_band:
             print('Skipping out of area band {} of {} with latitude extent of min: {}\tmax: {}\n'
               .format(num_band, nsteps, round(lat_ll_new,6), round(lat_ur, 6)))
         else:
-
-            form.bbox = list([lon_ll, lat_ll_new, lon_ur, lat_ur])
-
             print('\nProcessing band {} of {} with latitude extent of min: {}\tmax: {}'
-                  .format(num_band, nsteps, round(lat_ll_new,6), round(lat_ur, 6)))
+                                                    .format(num_band, nsteps, round(lat_ll_new,6), round(lat_ur, 6)))
             QApplication.processEvents()
 
-            _generate_soil_files(form, num_band)  # does actual work
+            form.bbox = list([lon_ll, lat_ll_new, lon_ur, lat_ur])
+            completed = _write_to_soil_files(form, soil_csvs, num_band)  # does actual work
+            ncompleted += completed
+            if ncompleted >= max_cells:
+                print('Finished processing after generating {} cells'.format(ncompleted))
+                break
 
         # check to see if the last band is completed
         if lat_ll_aoi > lat_ll_new or num_band == nsteps:
@@ -218,94 +267,11 @@ def generate_soil_outputs(form):
 
         lat_ur = lat_ll_new
 
+    # close CSV files
+    # ==============
+    for key in soil_csvs.output_fhs:
+        soil_csvs.output_fhs[key].close()
+    print('\nFinished soil metric writing')
+
     return
 
-# ===============================================================
-#
-def simplify_soil_recs(soil_recs, use_dom_soil_flag):
-    """
-    compress soil records if duplicates are present
-    simplify soil records if requested
-    each mu_global points to a group of soils
-    a soil group can have up to ten soils
-    """
-    func_name =  __prog__ + ' _simplify_soil_recs'
-
-    num_raw = 0 # total number of sub-soils
-    num_compress = 0 # total number of sub-soils after compressions
-
-    new_soil_recs = {}
-    for mu_global in soil_recs:
-
-        # no processing necessary
-        # =======================
-        num_sub_soils = len(soil_recs[mu_global])
-        num_raw += num_sub_soils
-        if num_sub_soils == 1:
-            num_compress += 1
-            new_soil_recs[mu_global] = soil_recs[mu_global]
-            continue
-
-        # check each soil for duplicates
-        # ==============================
-        new_soil_group = []
-        soil_group = sorted(soil_recs[mu_global])
-
-        # skip empty groups
-        # =================
-        if len(soil_group) == 0:
-            continue
-
-        first_soil = soil_group[0]
-        metrics1 = first_soil[:-1]
-        share1   = first_soil[-1]
-        for soil in soil_group[1:]:
-            metrics2 = soil[:-1]
-            share2 =   soil[-1]
-            if metrics1 == metrics2:
-                share1 += share2
-            else:
-                new_soil_group.append(metrics1 + [share1])
-                metrics1 = metrics2
-                share1 = share2
-
-        new_soil_group.append(metrics1 + [share1])
-        num_sub_soils = len(new_soil_group)
-        num_compress += num_sub_soils
-        if num_sub_soils == 1:
-            new_soil_recs[mu_global] = new_soil_group
-            continue
-
-        if use_dom_soil_flag:
-            # assign 100% to the first entry of sorted list
-            # =============================================
-            dom_soil = copy(sorted(new_soil_group, reverse = True, key=itemgetter(-1))[0])
-            dom_soil[-1] = 100.0
-            new_soil_recs[mu_global] = list([dom_soil])
-
-    mess = 'Leaving {}\trecords in: {} out: {}'.format(func_name, len(soil_recs),len(new_soil_recs))
-    print(mess + '\tnum raw sub-soils: {}\tafter compression: {}'.format(num_raw, num_compress))
-    return new_soil_recs
-
-def _simplify_aoi(aoi_res):
-    """
-    simplify AOI records
-    """
-    aoi_res_new = []
-    j = 0
-    for site_rec in aoi_res:
-        content = site_rec[-1]
-        npairs = len(content)
-        if npairs == 0:
-            print('No soil information for AOI cell {} - will skip'.format(site_rec))
-        elif npairs == 1:
-            aoi_res_new.append(site_rec)
-        else:
-            site_rec_list = list(site_rec)  # convert tuple to a list so we can edit last element
-            new_content = sorted(content.items(), reverse = True, key = itemgetter(1))  # sort content so we can pick up most dominant mu_global
-            total_proportion = sum(content.values())    # add up proportions
-            site_rec_list[-1] = {new_content[0][0]: total_proportion}       # create a new single mu global with summed proportions
-
-            aoi_res_new.append(tuple(site_rec_list)) # convert list to tuple
-
-    return aoi_res_new
