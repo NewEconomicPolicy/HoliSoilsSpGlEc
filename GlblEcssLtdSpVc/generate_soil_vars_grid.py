@@ -55,7 +55,7 @@ class SoilCsvOutputs(object):
         self.output_fhs = {}
         self.writers = {}
         for metric in self.metrics:
-            hdr_rec = self.hdrs + [metric]
+            hdr_rec = self.hdrs + [metric, '30-100']
 
             fname = join(self.soil_dir, metric + '.txt')
             try:
@@ -144,8 +144,13 @@ def _write_to_soil_files(form, soil_csvs, num_band):
             # soil_c, bulk_dens, ph = soil[:3]
             # ===============================
             for soil in soil_list:
-                for metric, val in zip(soil_csvs.metrics, soil[:3]):
-                    out_rec = list([lat, long, mu_global, val])
+                top_soil = soil[:3]
+                if len(soil) == 13:
+                    sub_soil = soil[6:9]
+                else:
+                    sub_soil = 3*[-999]
+                for metric, val_top, val_sub in zip(soil_csvs.metrics, top_soil, sub_soil):
+                    out_rec = list([lat, long, mu_global, val_top, val_sub])
                     soil_csvs.writers[metric].writerow(out_rec)
 
         completed += 1
@@ -237,11 +242,11 @@ def generate_soil_outputs(form):
     for isec in range(nsteps):
         lat_ll_new = lat_ur - lat_step
         num_band = isec + 1
-
+        '''
         if num_band > 3:       # TODO remove when no longer needed
             print('Exiting from processing after {} bands'.format(num_band - 1))
             break
-
+        '''
         # if the latitude floor of the band has not reached the ceiling of the HWSD aoi then skip this band
         if lat_ll_new > form.hwsd_mu_globals.lat_ur_aoi or num_band < start_at_band:
             print('Skipping out of area band {} of {} with latitude extent of min: {}\tmax: {}\n'
