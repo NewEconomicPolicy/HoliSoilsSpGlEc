@@ -178,10 +178,10 @@ def generate_soil_outputs(form):
 
     # make sure bounding box is correctly set
     # =======================================
-    lon_ll = -10.25
-    lat_ll = 35.25
-    lon_ur = 34.75
-    lat_ur = 69.75
+    lon_ll = -11.5
+    lat_ll = 34.5
+    lon_ur = 35.0
+    lat_ur = 72.0
     form.bbox =  list([lon_ll, lat_ll, lon_ur, lat_ur])
 
     # lat_ll_aoi is the floor i.e. least latitude, of the HWSD aoi which marks the end of the banding loop

@@ -25,6 +25,7 @@ from glbl_ecss_cmmn_cmpntsGUI import calculate_grid_cell, grid_resolutions
 
 from glbl_ecsse_high_level_sp import generate_banded_sims
 from generate_soil_vars_grid import generate_soil_outputs
+from generate_soil_vars_nc import make_soil_nc_outputs
 
 from weather_datasets import change_weather_resource
 from initialise_funcs import read_config_file
@@ -244,6 +245,14 @@ class Form(QWidget):
         w_soil_outpts.clicked.connect(self.genSoilOutptsClicked)
         self.w_soil_outpts = w_soil_outpts
 
+        w_soil_nc = QPushButton("Make soil NC")
+        helpText = 'Generate NetCDF file of soil carbon (Dominant), pH and bulk density for both layers'
+        w_soil_nc.setToolTip(helpText)
+        w_soil_nc.setFixedWidth(STD_BTN_SIZE_100)
+        grid.addWidget(w_soil_nc, irow, 2)
+        w_soil_nc.clicked.connect(self.genSoilNcClicked)
+        self.w_soil_nc = w_soil_nc
+
         # LH vertical box consists of png image
         # =====================================
         lh_vbox = QVBoxLayout()
@@ -301,6 +310,12 @@ class Form(QWidget):
 
         """
         generate_soil_outputs(self)
+
+    def genSoilNcClicked(self):
+        """
+
+        """
+        make_soil_nc_outputs(self)
 
     def changePlntFncType(self):
         """
