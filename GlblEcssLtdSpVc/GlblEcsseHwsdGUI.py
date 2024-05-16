@@ -21,7 +21,7 @@ from PyQt5.QtWidgets import (QLabel, QWidget, QApplication, QHBoxLayout, QVBoxLa
                              QComboBox, QPushButton, QCheckBox, QFileDialog, QTextEdit)
 
 from common_componentsGUI import (exit_clicked, commonSection, changeConfigFile, studyTextChanged, save_clicked)
-from glbl_ecss_cmmn_cmpntsGUI import calculate_grid_cell, grid_resolutions
+from glbl_ecss_cmmn_cmpntsGUI import calculate_grid_cell, grid_resolutions, glblecss_limit_simulations
 
 from glbl_ecsse_high_level_sp import generate_banded_sims
 from generate_soil_vars_grid import generate_soil_outputs
@@ -177,7 +177,6 @@ class Form(QWidget):
         # ==================================
         irow = commonSection(self, grid, irow)
         irow = grid_resolutions(self, grid, irow)
-
         irow += 1
         grid.addWidget(QLabel(''), irow, 2)  # spacer
 
@@ -228,6 +227,9 @@ class Form(QWidget):
         w_exit.clicked.connect(self.exitClicked)
 
         # =============================================
+        irow += 1
+        irow = glblecss_limit_simulations(self, grid, irow)
+
         irow += 1
         w_clear = QPushButton("Clean sims")
         helpText = 'Remove all simulation files for this study'

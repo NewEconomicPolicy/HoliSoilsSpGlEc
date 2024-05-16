@@ -152,7 +152,7 @@ def _generate_ecosse_files(form, climgen, mask_defn, num_band):
 
         # land use mask
         # =============
-        if mask_defn is not None:            
+        if mask_defn is not None:
             if check_mask_location(mask_defn, site_rec, land_uses, form.req_resol_deg):
                 landuse_yes += 1
             else:
@@ -216,8 +216,8 @@ def generate_banded_sims(form):
     lon_ll = form.litter_defn.lon_frst
     lat_ll = form.litter_defn.lat_frst
     lon_ur = form.litter_defn.lon_last
-    lat_ur = form.litter_defn.lat_last
-    form.bbox =  list([lon_ll, lat_ll, lon_ur, lat_ur])
+    lat_ur_lttr = form.litter_defn.lat_last
+    form.bbox =  list([lon_ll, lat_ll, lon_ur, lat_ur_lttr])
 
     # lat_ll_aoi is the floor i.e. least latitude, of the HWSD aoi which marks the end of the banding loop
     # ====================================================================================================
@@ -229,7 +229,7 @@ def generate_banded_sims(form):
 
     # check overlap - study too far to west or east or too far south or north of AOI file
     # ===================================================================================
-    if (lon_ur < lon_ll_aoi) or (lon_ll > lon_ur_aoi) or  (lat_ur < lat_ll_aoi) or (lat_ll > lat_ur_aoi):
+    if (lon_ur < lon_ll_aoi) or (lon_ll > lon_ur_aoi) or  (lat_ur_lttr < lat_ll_aoi) or (lat_ll > lat_ur_aoi):
         print('Error: Study bounding box and HWSD CSV file do not overlap - no simulations are possible')
         return
 
@@ -274,11 +274,12 @@ def generate_banded_sims(form):
     # TODO: patch to be sorted
     # ========================
     for mu_global in hwsd.bad_muglobals:
-        del(soil_recs[mu_global])
+        del soil_recs[mu_global]
 
     form.hwsd_mu_globals.soil_recs = simplify_soil_recs(soil_recs, use_dom_soil_flag)
     form.hwsd_mu_globals.bad_mu_globals = [0] +  hwsd.bad_muglobals
-    del(hwsd); del(soil_recs)
+    del hwsd; del soil_recs
+    lat_ur_aoi = form.hwsd_mu_globals.lat_ur_aoi
 
     # create climate object
     # =====================
@@ -287,31 +288,35 @@ def generate_banded_sims(form):
     # main banding loop
     # =================
     lat_step = 0.5
-    nsteps = int((lat_ur-lat_ll)/lat_step) + 1
-    for isec in range(nsteps):
+    lat_ur = copy(lat_ur_lttr)
+    nbands = int((lat_ur-lat_ll)/lat_step) + 1
+    for iband in range(nbands):
         lat_ll_new = lat_ur - lat_step
-        num_band = isec + 1
+        num_band = iband + 1
         '''
         if num_band > 2:       # TODO remove when no longer needed
             print('Exiting from processing after {} bands'.format(num_band - 1))
             break
         '''
-        # if the latitude floor of the band has not reached the ceiling of the HWSD aoi then skip this band
-        if lat_ll_new > form.hwsd_mu_globals.lat_ur_aoi or num_band < start_at_band:
-            print('Skipping out of area band {} of {} with latitude extent of min: {}\tmax: {}\n'
-              .format(num_band, nsteps, round(lat_ll_new,6), round(lat_ur, 6)))
-        else:
+        if lat_ll_new > lat_ur_aoi:
+            mess = 'Skipping simulations at band {} since new band latitude floor '.format(num_band)
+            print(mess + '{} exceeds AOI upper latitude {}'.format(round(lat_ll_new,6), round(lat_ur_aoi, 6)))
 
+        elif num_band < start_at_band:
+            print('Skipping out of area band {} of {} with latitude extent of min: {}\tmax: {}\n'
+                                            .format(num_band, nbands, round(lat_ll_new, 6), round(lat_ur, 6)))
+        else:
             form.bbox = list([lon_ll, lat_ll_new, lon_ur, lat_ur])
 
             print('\nProcessing band {} of {} with latitude extent of min: {}\tmax: {}'
-                  .format(num_band, nsteps, round(lat_ll_new,6), round(lat_ur, 6)))
+                                                .format(num_band, nbands, round(lat_ll_new,6), round(lat_ur, 6)))
             QApplication.processEvents()
 
             _generate_ecosse_files(form, climgen, mask_defn, num_band)  # does actual work
 
         # check to see if the last band is completed
-        if lat_ll_aoi > lat_ll_new or num_band == nsteps:
+        # ==========================================
+        if lat_ll_aoi > lat_ll_new or num_band == nbands:
             print('Finished processing after {} bands of latitude extents'.format(num_band))
             for ichan in range(len(form.fstudy)):
                 form.fstudy[ichan].close()
