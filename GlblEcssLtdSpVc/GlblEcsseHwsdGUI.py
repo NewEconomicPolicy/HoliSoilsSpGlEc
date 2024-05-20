@@ -227,9 +227,10 @@ class Form(QWidget):
         w_exit.clicked.connect(self.exitClicked)
 
         # =============================================
+        '''
         irow += 1
         irow = glblecss_limit_simulations(self, grid, irow)
-
+        '''
         irow += 1
         w_clear = QPushButton("Clean sims")
         helpText = 'Remove all simulation files for this study'

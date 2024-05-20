@@ -30,6 +30,14 @@ from prepare_ecosse_files import update_progress, make_ecosse_file
 from glbl_ecss_cmmn_cmpntsGUI import calculate_grid_cell
 from getClimGenFns import check_clim_nc_limits, associate_climate
 from mngmnt_fns_and_class import ManagementSet, check_mask_location, get_hilda_land_uses
+'''
+START_AT_BAND = 10
+END_AT_BAND = 12
+MAX_CELLS = 3
+'''
+START_AT_BAND = 0
+END_AT_BAND = 999
+MAX_CELLS = 9999999
 
 def _generate_ecosse_files(form, climgen, mask_defn, num_band):
     """
@@ -182,6 +190,8 @@ def _generate_ecosse_files(form, climgen, mask_defn, num_band):
             ltd_data = make_ltd_data_files.MakeLtdDataFiles(form, climgen, yrs_pi, comments=True)
             make_ecosse_file(form, climgen, ltd_data, site_rec, study, pettmp_grid_cell)
             completed += 1
+            if completed >= MAX_CELLS:
+                break
 
         last_time = update_progress(last_time, start_time, completed, num_meta_cells, skipped, warn_count)
         QApplication.processEvents()
@@ -256,8 +266,6 @@ def generate_banded_sims(form):
     # ============================ for each PFT end =====================================
     # print('Study bounding box and HWSD CSV file overlap')
     #        ============================================
-    start_at_band = form.start_at_band
-    print('Starting at band {}'.format(start_at_band))
 
     # extract required values from the HWSD database and simplify if requested
     # ========================================================================
@@ -289,7 +297,12 @@ def generate_banded_sims(form):
     # =================
     lat_step = 0.5
     lat_ur = copy(lat_ur_lttr)
-    nbands = int((lat_ur-lat_ll)/lat_step) + 1
+    nbands = int((lat_ur - lat_ll)/lat_step) + 1
+    start_at_band = START_AT_BAND  # form.start_at_band
+    end_at_band = END_AT_BAND
+    print('Total # bands: {}\tstarting and ending at bands {} and {}'.format(nbands, start_at_band, end_at_band))
+    QApplication.processEvents()
+
     for iband in range(nbands):
         lat_ll_new = lat_ur - lat_step
         num_band = iband + 1
@@ -302,7 +315,7 @@ def generate_banded_sims(form):
             mess = 'Skipping simulations at band {} since new band latitude floor '.format(num_band)
             print(mess + '{} exceeds AOI upper latitude {}'.format(round(lat_ll_new,6), round(lat_ur_aoi, 6)))
 
-        elif num_band < start_at_band:
+        elif (num_band < start_at_band) or (num_band > end_at_band):
             print('Skipping out of area band {} of {} with latitude extent of min: {}\tmax: {}\n'
                                             .format(num_band, nbands, round(lat_ll_new, 6), round(lat_ur, 6)))
         else:
@@ -403,7 +416,8 @@ def _simplify_aoi(aoi_res):
         content = site_rec[-1]
         npairs = len(content)
         if npairs == 0:
-            print('No soil information for AOI cell {} - will skip'.format(site_rec))
+            print('No soil information for AOI cell at lat/long: {} {} - will skip'
+                                                                .format(round(site_rec[2], 4), round(site_rec[3], 4)))
         elif npairs == 1:
             aoi_res_new.append(site_rec)
         else:
