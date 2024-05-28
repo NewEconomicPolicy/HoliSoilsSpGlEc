@@ -14,6 +14,7 @@ import sys
 from os.path import normpath
 from os import system, getcwd
 from time import time
+from pandas import DataFrame
 
 from PyQt5.QtCore import Qt
 from PyQt5.QtGui import QPixmap, QFont
@@ -311,11 +312,26 @@ class Form(QWidget):
 
     def viewRunReport(self):
         """
-
+        C
         """
         mess_content = ''
-        for line in self.band_reports:
-            mess_content += str(line)
+        dictr = {}
+        for nline, line in enumerate(self.band_reports):
+            atoms = line.split()
+            if nline == 0:
+                headers = [atoms[0][0:-1], atoms[2] + ' yes', atoms[2] + ' no', atoms[8][0:-1], 'no PIs',
+                                                                                                    atoms[-2][0:-1]]
+                dictr = {field: [] for field in headers}
+
+            dictr['Band'].append(atoms[1])
+            dictr['forest yes'].append(atoms[4])
+            dictr['forest no'].append(atoms[6])
+            dictr['weather'].append(atoms[9])
+            dictr['no PIs'].append(atoms[13])
+            dictr['completed'].append(atoms[15])
+
+        df = DataFrame(dictr)
+        mess_content = df.to_string()
 
         w_mess_box = QMessageBox()
         w_mess_box.setWindowTitle("Banded simulations report")

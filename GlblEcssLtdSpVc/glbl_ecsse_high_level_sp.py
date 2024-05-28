@@ -73,7 +73,7 @@ def _generate_ecosse_files(form, climgen, mask_defn, num_band):
     hwsd.bad_muglobals = form.hwsd_mu_globals.bad_mu_globals
     aoi_res, bbox = gen_grid_cells_for_band(hwsd, form.req_resol_upscale)
     if form.w_use_high_cover.isChecked():
-        aoi_res =  _simplify_aoi(aoi_res)
+        aoi_res = _simplify_aoi(aoi_res)
 
     lon_ll_aoi, lat_ll_aoi, lon_ur_aoi, lat_ur_aoi = bbox
     num_meta_cells = len(aoi_res)
@@ -208,10 +208,10 @@ def _generate_ecosse_files(form, climgen, mask_defn, num_band):
     return mess
 
 def generate_banded_sims(form):
-    '''
+    """
     called from GUI
-    '''
-    if form.hwsd_mu_globals == None:
+    """
+    if form.hwsd_mu_globals is None:
         print('Undetermined HWSD aoi - please select a valid HSWD csv file')
         return
 
