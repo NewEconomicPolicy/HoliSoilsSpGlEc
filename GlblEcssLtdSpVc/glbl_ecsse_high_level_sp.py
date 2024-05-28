@@ -14,7 +14,7 @@ __prog__ = 'glbl_ecsse_high_level_sp.py'
 __version__ = '0.0.1'
 __author__ = 's03mm5'
 
-import time
+from time import time
 from operator import itemgetter
 from copy import copy
 from netCDF4 import Dataset
@@ -30,6 +30,9 @@ from prepare_ecosse_files import update_progress, make_ecosse_file
 from glbl_ecss_cmmn_cmpntsGUI import calculate_grid_cell
 from getClimGenFns import check_clim_nc_limits, associate_climate
 from mngmnt_fns_and_class import ManagementSet, check_mask_location, get_hilda_land_uses
+
+WARN_STR = '*** Warning *** '
+ERROR_STR = '*** Error *** '
 
 def _generate_ecosse_files(form, climgen, mask_defn, num_band):
     """
@@ -123,18 +126,19 @@ def _generate_ecosse_files(form, climgen, mask_defn, num_band):
     if mask_defn is not None:
         mask_defn.nc_dset = Dataset(mask_defn.nc_fname, mode='r')
 
-    strt_year = form.litter_defn.start_year
     pft_name = form.w_combo_pfts.currentText()
     pft_key = list({elem for elem in form.pfts if form.pfts[elem] == pft_name})[0]
 
-    last_time = time.time()
-    start_time = time.time()
+    last_time = time()
+    start_time = time()
     completed = 0
     skipped = 0
     landuse_yes = 0
     landuse_no = 0
     warn_count = 0
+    no_yrs_pi = 0
     no_pis = 0
+    no_wthr = 0
 
     if mask_defn is not None:
         land_uses = get_hilda_land_uses(form.w_hilda_lus)
@@ -142,12 +146,14 @@ def _generate_ecosse_files(form, climgen, mask_defn, num_band):
     # generate sets of Ecosse files for each site where each site has one or more soils
     # each soil can have one or more dominant soils
     # =======================================================================
+    max_cells = int(form.w_max_sims.text())
     for site_indx, site_rec in enumerate(aoi_res):
 
         pettmp_grid_cell = associate_climate(site_rec, climgen, pettmp_hist, pettmp_fut)
         if len(pettmp_grid_cell) == 0:
-            print('*** Warning *** no weather data for site with lat: {}\tlon: {}'
+            print(WARN_STR + 'no weather data for site with lat: {}\tlon: {}'
                                                         .format(round(site_rec[2],3), round(site_rec[3],3)))
+            no_wthr += 1
             continue
 
         # land use mask
@@ -165,10 +171,11 @@ def _generate_ecosse_files(form, climgen, mask_defn, num_band):
             mess = 'No weather data for lat/lon: {}/{}\t'.format(lat, long, gran_lat, gran_lon)
             mess += 'granular lat/lon: {}/{}'.format(lat, long, gran_lat, gran_lon)
             form.lgr.info(mess)
-            skipped += 1
+            no_wthr += 1
         else:
             yrs_pi = form.litter_defn.get_ochidee_nc_data(pft_key, lat, long)
             if yrs_pi is None:
+                no_yrs_pi += 1
                 continue
 
             if all(val == 0 for val in yrs_pi['pis']):
@@ -182,6 +189,8 @@ def _generate_ecosse_files(form, climgen, mask_defn, num_band):
             ltd_data = make_ltd_data_files.MakeLtdDataFiles(form, climgen, yrs_pi, comments=True)
             make_ecosse_file(form, climgen, ltd_data, site_rec, study, pettmp_grid_cell)
             completed += 1
+            if completed >= max_cells:
+                break
 
         last_time = update_progress(last_time, start_time, completed, num_meta_cells, skipped, warn_count)
         QApplication.processEvents()
@@ -191,12 +200,12 @@ def _generate_ecosse_files(form, climgen, mask_defn, num_band):
     if mask_defn is not None:
         mask_defn.nc_dset.close()
 
-    mess = '\nBand: {}\tLU yes: {}  LU no: {}\t'.format(num_band, landuse_yes, landuse_no)
-    mess += 'skipped: {}\tcompleted: {}\tno plant inputs: {}'.format(skipped, completed, no_pis)
+    mess = '\nBand: {}\tforest yes: {} no: {}\tno weather: {}\t'.format(num_band, landuse_yes, landuse_no, no_wthr)
+    mess += 'no plant inputs: {}\tcompleted: {}'.format(no_pis + no_yrs_pi, completed)
     print(mess); QApplication.processEvents()
 
     print('')   # spacer
-    return
+    return mess
 
 def generate_banded_sims(form):
     '''
@@ -230,7 +239,7 @@ def generate_banded_sims(form):
     # check overlap - study too far to west or east or too far south or north of AOI file
     # ===================================================================================
     if (lon_ur < lon_ll_aoi) or (lon_ll > lon_ur_aoi) or  (lat_ur_lttr < lat_ll_aoi) or (lat_ll > lat_ur_aoi):
-        print('Error: Study bounding box and HWSD CSV file do not overlap - no simulations are possible')
+        print(ERROR_STR + 'Study bounding box and HWSD CSV file do not overlap - no simulations are possible')
         return
 
     # weather choice
@@ -256,8 +265,6 @@ def generate_banded_sims(form):
     # ============================ for each PFT end =====================================
     # print('Study bounding box and HWSD CSV file overlap')
     #        ============================================
-    start_at_band = form.start_at_band
-    print('Starting at band {}'.format(start_at_band))
 
     # extract required values from the HWSD database and simplify if requested
     # ========================================================================
@@ -289,22 +296,26 @@ def generate_banded_sims(form):
     # =================
     lat_step = 0.5
     lat_ur = copy(lat_ur_lttr)
-    nbands = int((lat_ur-lat_ll)/lat_step) + 1
+    nbands = int((lat_ur - lat_ll)/lat_step) + 1
+    start_at_band = int(form.w_strt_band.text())
+    end_at_band = int(form.w_end_band.text())
+    print('Total # bands: {}\tstarting and ending at bands {} and {}'.format(nbands, start_at_band, end_at_band))
+    QApplication.processEvents()
+
+    band_reports = []
     for iband in range(nbands):
         lat_ll_new = lat_ur - lat_step
         num_band = iband + 1
-        '''
-        if num_band > 2:       # TODO remove when no longer needed
-            print('Exiting from processing after {} bands'.format(num_band - 1))
-            break
-        '''
         if lat_ll_new > lat_ur_aoi:
             mess = 'Skipping simulations at band {} since new band latitude floor '.format(num_band)
             print(mess + '{} exceeds AOI upper latitude {}'.format(round(lat_ll_new,6), round(lat_ur_aoi, 6)))
 
         elif num_band < start_at_band:
-            print('Skipping out of area band {} of {} with latitude extent of min: {}\tmax: {}\n'
+            print('Skipping out of area band {} of {} with latitude extent of min: {}\tmax: {}'
                                             .format(num_band, nbands, round(lat_ll_new, 6), round(lat_ur, 6)))
+        elif num_band > end_at_band:
+            print('Exiting from processing after {} bands'.format(num_band - 1))
+            break
         else:
             form.bbox = list([lon_ll, lat_ll_new, lon_ur, lat_ur])
 
@@ -312,17 +323,25 @@ def generate_banded_sims(form):
                                                 .format(num_band, nbands, round(lat_ll_new,6), round(lat_ur, 6)))
             QApplication.processEvents()
 
-            _generate_ecosse_files(form, climgen, mask_defn, num_band)  # does actual work
+            report = _generate_ecosse_files(form, climgen, mask_defn, num_band)  # does actual work
+            band_reports.append(report)
 
         # check to see if the last band is completed
         # ==========================================
-        if lat_ll_aoi > lat_ll_new or num_band == nbands:
-            print('Finished processing after {} bands of latitude extents'.format(num_band))
-            for ichan in range(len(form.fstudy)):
-                form.fstudy[ichan].close()
+        if lat_ll_aoi > lat_ll_new:
             break
 
         lat_ur = lat_ll_new
+
+    print('Finished processing after {} bands of latitude extents'.format(num_band))
+    #      ======================================================
+    QApplication.processEvents()
+    form.band_reports = band_reports
+    for report in band_reports:
+        form.lgr.info(report)
+
+    for ichan in range(len(form.fstudy)):
+        form.fstudy[ichan].close()
 
     return
 
@@ -403,7 +422,8 @@ def _simplify_aoi(aoi_res):
         content = site_rec[-1]
         npairs = len(content)
         if npairs == 0:
-            print('No soil information for AOI cell {} - will skip'.format(site_rec))
+            print('No soil information for AOI cell at lat/long: {} {} - will skip'
+                                                                .format(round(site_rec[2], 4), round(site_rec[3], 4)))
         elif npairs == 1:
             aoi_res_new.append(site_rec)
         else:

@@ -15,15 +15,16 @@ __version__ = '0.0.0'
 # ---------------
 # 
 from os.path import exists, isfile, join
-import json
+from  json import dump as json_dump, load as json_load
 
 from shape_funcs import calculate_area
 from weather_datasets import change_weather_resource, record_weather_settings
 from glbl_ecss_cmmn_cmpntsGUI import calculate_grid_cell
 from litter_and_orchidee_fns import fetch_nc_litter
 
-MIN_GUI_LIST = ['weatherResource', 'aveWthrFlag', 'bbox', 'plntFncTyp', 'piNcFname']
+MIN_GUI_LIST = ['weatherResource', 'aveWthrFlag', 'bbox', 'plntFncTyp', 'piNcFname', 'maxSims', 'endBand', 'strtBand']
 CMN_GUI_LIST = ['study', 'histStrtYr', 'histEndYr', 'climScnr', 'futStrtYr', 'futEndYr', 'gridResol', 'eqilMode']
+
 BBOX_DEFAULT = [116.90045, 28.2294, 117.0, 29.0]  # bounding box default - somewhere in SE Europe
 sleepTime = 5
 ERROR_STR = '*** Error *** '
@@ -37,7 +38,7 @@ def read_config_file(form):
     if exists(config_file):
         try:
             with open(config_file, 'r') as fconfig:
-                config = json.load(fconfig)
+                config = json_load(fconfig)
                 print('Read config file ' + config_file)
         except (OSError, IOError) as err:
             print(err)
@@ -52,11 +53,23 @@ def read_config_file(form):
                 config[grp][key] = ''
             elif key == 'plntFncTyp':
                 config[grp][key] = 'SoilBareGlobal'
+            elif key == 'maxSims':
+                config[grp][key] = str(9999999)
+            elif key == 'strtBand':
+                config[grp][key] = str(0)
+            elif key == 'endBand':
+                config[grp][key] = str(360)
             else:
                 print(ERROR_STR + 'setting {} is required in group {} of config file {}'.format(key, grp, config_file))
                 return False
 
     form.w_hwsd_bbox.setText(form.hwsd_mu_globals.aoi_label)    # post HWSD CSV file details
+
+    # post limit simulations settings
+    # ===============================
+    form.w_max_sims.setText(config[grp]['maxSims'])
+    form.w_strt_band.setText(config[grp]['strtBand'])
+    form.w_end_band.setText(config[grp]['endBand'])
 
     # enable VC ORCHIDEE NC file
     # ===========================
@@ -70,6 +83,7 @@ def read_config_file(form):
     form.bbox = config[grp]['bbox']
     form.combo10w.setCurrentText(weather_resource)
     change_weather_resource(form, weather_resource)
+    form.band_reports = None
 
     # land uses
     # =========
@@ -96,6 +110,8 @@ def read_config_file(form):
             form.csv_fname = ''
             return False
 
+    # other settings
+    # ==============
     form.w_study.setText(str(config[grp]['study']))
     hist_strt_year = config[grp]['histStrtYr']
     hist_end_year = config[grp]['histEndYr']
@@ -119,7 +135,6 @@ def read_config_file(form):
     # bounding box set up
     # ===================
     area = calculate_area(form.bbox)
-    ll_lon, ll_lat, ur_lon, ur_lat = form.bbox
     form.fstudy = ''
     # form.w_bbox.setText(format_bbox(form.bbox, area))
 
@@ -129,6 +144,9 @@ def read_config_file(form):
         form.w_ave_weather.setCheckState(2)
     else:
         form.w_ave_weather.setCheckState(0)
+
+    # limit simulations settings
+    # ==========================
 
     # avoids errors when exiting
     # ==========================
@@ -182,7 +200,10 @@ def write_config_file(form, message_flag=True):
             'aveWthrFlag': form.w_ave_weather.isChecked(),
             'plntFncTyp': form.w_combo_pfts.currentText(),
             'piNcFname': form.w_nc_lttr_fn.text(),
-            'usePolyFlag': False
+            'usePolyFlag': False,
+            'maxSims': form.w_max_sims.text(),
+            'strtBand': form.w_strt_band.text(),
+            'endBand': form.w_end_band.text()
         },
         'cmnGUI': {
             'study': form.w_study.text(),
@@ -209,7 +230,7 @@ def write_config_file(form, message_flag=True):
         descriptor = 'Wrote new'
     if study != '':
         with open(config_file, 'w') as fconfig:
-            json.dump(config, fconfig, indent=2, sort_keys=True)
+            json_dump(config, fconfig, indent=2, sort_keys=True)
             fconfig.close()
             if message_flag:
                 print('\n' + descriptor + ' configuration file ' + config_file)
@@ -275,7 +296,7 @@ def write_study_definition_file(form):
     else:
         study_defn_file = join(form.sims_dir, study + '_study_definition.txt')
         with open(study_defn_file, 'w') as fstudy:
-            json.dump(study_defn, fstudy, indent=2, sort_keys=True)
+            json_dump(study_defn, fstudy, indent=2, sort_keys=True)
             print('\nWrote study definition file ' + study_defn_file)
 
     return
@@ -307,6 +328,6 @@ def _write_default_config_file(config_file):
     }
     # if config file does not exist then create it...
     with open(config_file, 'w') as fconfig:
-        json.dump(_default_config, fconfig, indent=2, sort_keys=True)
+        json_dump(_default_config, fconfig, indent=2, sort_keys=True)
         fconfig.close()
         return _default_config

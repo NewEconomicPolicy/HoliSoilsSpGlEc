@@ -18,10 +18,10 @@ from time import time
 from PyQt5.QtCore import Qt
 from PyQt5.QtGui import QPixmap, QFont
 from PyQt5.QtWidgets import (QLabel, QWidget, QApplication, QHBoxLayout, QVBoxLayout, QGridLayout, QLineEdit,
-                             QComboBox, QPushButton, QCheckBox, QFileDialog, QTextEdit)
+                             QComboBox, QPushButton, QCheckBox, QFileDialog, QTextEdit, QMessageBox)
 
 from common_componentsGUI import (exit_clicked, commonSection, changeConfigFile, studyTextChanged, save_clicked)
-from glbl_ecss_cmmn_cmpntsGUI import calculate_grid_cell, grid_resolutions, glblecss_limit_simulations
+from glbl_ecss_cmmn_cmpntsGUI import calculate_grid_cell, grid_resolutions, glblecss_limit_sims
 
 from glbl_ecsse_high_level_sp import generate_banded_sims
 from generate_soil_vars_grid import generate_soil_outputs
@@ -36,6 +36,7 @@ from set_up_logging import OutLog
 STD_BTN_SIZE_100 = 100
 STD_BTN_SIZE_80 = 80
 STD_FLD_SIZE_180 = 180
+STD_FLD_SIZE_200 = 200
 
 ERROR_STR = '*** Error *** '
 WARN_STR = '*** Warning *** '
@@ -119,6 +120,7 @@ class Form(QWidget):
         grid.addWidget(w_lbl_pfts, irow, 0)
 
         w_combo_pfts = QComboBox()
+        w_combo_pfts.setFixedWidth(STD_FLD_SIZE_200)
         for pft in self.pfts:
             w_combo_pfts.addItem(self.pfts[pft])
         grid.addWidget(w_combo_pfts, irow, 1, 1, 2)
@@ -228,7 +230,7 @@ class Form(QWidget):
 
         # =============================================
         irow += 1
-        irow = glblecss_limit_simulations(self, grid, irow)
+        irow = glblecss_limit_sims(self, grid, irow)
 
         irow += 1
         w_clear = QPushButton("Clean sims")
@@ -306,6 +308,22 @@ class Form(QWidget):
         read_config_file(self)
 
         self.combo10w.currentIndexChanged[str].connect(self.weatherResourceChanged)
+
+    def viewRunReport(self):
+        """
+
+        """
+        mess_content = ''
+        for line in self.band_reports:
+            mess_content += str(line)
+
+        w_mess_box = QMessageBox()
+        w_mess_box.setWindowTitle("Banded simulations report")
+        w_mess_box.setText(mess_content)
+        w_mess_box.setStandardButtons(QMessageBox.Cancel)
+        w_mess_box = w_mess_box.exec()
+
+        return
 
     def genSoilOutptsClicked(self):
         """
