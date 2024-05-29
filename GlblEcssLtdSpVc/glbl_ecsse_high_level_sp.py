@@ -41,7 +41,7 @@ def _generate_ecosse_files(form, climgen, mask_defn, num_band):
     func_name =  __prog__ + '\t_generate_ecosse_files'
 
     study = form.study
-    print('Gathering soil and climate data for study {}...\t\tin {}'.format(study,func_name))
+    print('Gathering soil and climate data for study {}...'.format(study))
     snglPntFlag = False
 
     # instantiate a soil grid and climate objects

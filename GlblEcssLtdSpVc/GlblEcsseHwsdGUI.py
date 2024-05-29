@@ -234,29 +234,39 @@ class Form(QWidget):
         irow = glblecss_limit_sims(self, grid, irow)
 
         irow += 1
+        icol = 0
         w_clear = QPushButton("Clean sims")
         helpText = 'Remove all simulation files for this study'
         w_clear.setToolTip(helpText)
         w_clear.setFixedWidth(STD_BTN_SIZE_80)
         w_clear.setEnabled(False)
-        grid.addWidget(w_clear, irow, 0)
+        grid.addWidget(w_clear, irow, icol)
         w_clear.clicked.connect(self.cleanlicked)
 
+        icol += 1
         w_soil_outpts = QPushButton("Make soil files")
         helpText = 'Generate CSV data of soil carbon (Dominant), pH and bulk density for the HoliSoils project'
         w_soil_outpts.setToolTip(helpText)
         w_soil_outpts.setFixedWidth(STD_BTN_SIZE_100)
-        grid.addWidget(w_soil_outpts, irow, 1)
+        grid.addWidget(w_soil_outpts, irow, icol)
         w_soil_outpts.clicked.connect(self.genSoilOutptsClicked)
         self.w_soil_outpts = w_soil_outpts
 
+        icol += 1
         w_soil_nc = QPushButton("Make soil NC")
         helpText = 'Generate NetCDF file of soil carbon (Dominant), pH and bulk density for both layers'
         w_soil_nc.setToolTip(helpText)
         w_soil_nc.setFixedWidth(STD_BTN_SIZE_100)
-        grid.addWidget(w_soil_nc, irow, 2)
+        grid.addWidget(w_soil_nc, irow, icol)
         w_soil_nc.clicked.connect(self.genSoilNcClicked)
         self.w_soil_nc = w_soil_nc
+
+        icol += 1
+        w_clear = QPushButton("Clear window", self)
+        helpText = 'Clear reporting window'
+        w_clear.setToolTip(helpText)
+        w_clear.clicked.connect(self.clearReporting)
+        grid.addWidget(w_clear, irow, icol)
 
         # LH vertical box consists of png image
         # =====================================
@@ -314,7 +324,11 @@ class Form(QWidget):
         """
         C
         """
-        mess_content = ''
+        if self.band_reports is None:
+            print('Nothing to report')
+            QApplication.processEvents()
+            return
+
         dictr = {}
         for nline, line in enumerate(self.band_reports):
             atoms = line.split()
@@ -331,13 +345,13 @@ class Form(QWidget):
             dictr['completed'].append(atoms[15])
 
         df = DataFrame(dictr)
-        mess_content = df.to_string()
+        mess_content = df.to_string(index=False, justify='center', col_space=10)
 
         w_mess_box = QMessageBox()
         w_mess_box.setWindowTitle("Banded simulations report")
         w_mess_box.setText(mess_content)
         w_mess_box.setStandardButtons(QMessageBox.Cancel)
-        w_mess_box = w_mess_box.exec()
+        ret_code = w_mess_box.exec()
 
         return
 
