@@ -11,8 +11,9 @@ __version__ = '0.0.1'
 __author__ = 's03mm5'
 
 import sys
-from os.path import normpath
+from os.path import normpath, join
 from os import system, getcwd
+import subprocess
 from time import time
 from pandas import DataFrame
 
@@ -325,12 +326,16 @@ class Form(QWidget):
         C
         """
         if self.band_reports is None:
-            print('Nothing to report')
+            print(WARN_STR + 'Nothing to report')
             QApplication.processEvents()
             return
 
+        notepad_flag = True
         dictr = {}
         for nline, line in enumerate(self.band_reports):
+            if line is None:
+                continue
+
             atoms = line.split()
             if nline == 0:
                 headers = [atoms[0][0:-1], atoms[2] + ' yes', atoms[2] + ' no', atoms[8][0:-1], 'no PIs',
@@ -344,15 +349,23 @@ class Form(QWidget):
             dictr['no PIs'].append(atoms[13])
             dictr['completed'].append(atoms[15])
 
-        df = DataFrame(dictr)
-        mess_content = df.to_string(index=False, justify='center', col_space=10)
+        if len(dictr) == 0:
+            print(WARN_STR + 'Nothing to report')
+            QApplication.processEvents()
+            return
 
-        w_mess_box = QMessageBox()
-        w_mess_box.setWindowTitle("Banded simulations report")
-        w_mess_box.setText(mess_content)
-        w_mess_box.setStandardButtons(QMessageBox.Cancel)
-        ret_code = w_mess_box.exec()
-
+        dictr_df = DataFrame(dictr)
+        if notepad_flag:
+            scrtch_file = join(self.settings['log_dir'], 'run_report')
+            dictr_df.to_csv(scrtch_file, index=False, sep='\t')
+            ret_code = subprocess.run(['notepad.exe', scrtch_file])
+        else:
+            mess_content = dictr_df.to_string(index=False, justify='center', col_space=10)
+            w_mess_box = QMessageBox()
+            w_mess_box.setWindowTitle("Banded simulations report")
+            w_mess_box.setText(mess_content)
+            w_mess_box.setStandardButtons(QMessageBox.Cancel)
+            ret_code = w_mess_box.exec()
         return
 
     def genSoilOutptsClicked(self):
