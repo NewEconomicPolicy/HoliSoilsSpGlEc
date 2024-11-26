@@ -39,6 +39,7 @@ STD_BTN_SIZE_100 = 100
 STD_BTN_SIZE_80 = 80
 STD_FLD_SIZE_180 = 180
 STD_FLD_SIZE_200 = 200
+STD_FLD_SIZE_250 = 250
 
 ERROR_STR = '*** Error *** '
 WARN_STR = '*** Warning *** '
@@ -122,7 +123,7 @@ class Form(QWidget):
         grid.addWidget(w_lbl_pfts, irow, 0)
 
         w_combo_pfts = QComboBox()
-        w_combo_pfts.setFixedWidth(STD_FLD_SIZE_200)
+        w_combo_pfts.setFixedWidth(STD_FLD_SIZE_250)
         for pft in self.pfts:
             w_combo_pfts.addItem(self.pfts[pft])
         grid.addWidget(w_combo_pfts, irow, 1, 1, 2)
@@ -266,6 +267,7 @@ class Form(QWidget):
         w_clear = QPushButton("Clear window", self)
         helpText = 'Clear reporting window'
         w_clear.setToolTip(helpText)
+        w_clear.setFixedWidth(STD_BTN_SIZE_100)
         w_clear.clicked.connect(self.clearReporting)
         grid.addWidget(w_clear, irow, icol)
 
