@@ -27,6 +27,7 @@ WDGT_SIZE_40 = 40
 WDGT_SIZE_60 = 60
 WDGT_SIZE_80 = 80
 WDGT_SIZE_100 = 100
+WDGT_SIZE_200 = 200
 
 RESOLUTIONS = {120:'30"', 30:'2\'', 20:'3\'', 10:'6\'', 8:'7\' 30"', 6:'10\'', 4:'15\'', 3:'20\'', 2:'30\''}
 LU_DEFNS = {'lu_type' : ['Arable','Forestry','Miscanthus','Grassland','Semi-natural', 'SRC', 'Rapeseed', 'Sugar cane'],

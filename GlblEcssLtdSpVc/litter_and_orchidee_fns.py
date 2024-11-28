@@ -70,7 +70,8 @@ def fetch_nc_litter(form, fname):
 
     pfts = form.pfts
 
-    lttr_defn = OchideeSet(fname, pfts)
+    carbon_var = form.combo08.currentText()
+    lttr_defn = OchideeSet(fname, pfts, carbon_var)
     form.litter_defn = lttr_defn
     form.w_nc_extnt.setText(lttr_defn.nc_extnt)
 
@@ -83,13 +84,18 @@ def fetch_nc_litter(form, fname):
     # report average value
     # ====================
     pft_name = form.w_combo_pfts.currentText()
-    pft_key = list({elem for elem in pfts if pfts[elem] == pft_name})[0]
-    if pft_key in lttr_defn.aves:
-        ave_val = lttr_defn.aves[pft_key]
+    if pft_name == '':
+        mess = 'No data for ' + carbon_var
+        form.w_ave_val.setText(mess)
     else:
-        ave_val = 0.0
+        pft_key = list({elem for elem in pfts if pfts[elem] == pft_name})[0]
+        if pft_key in lttr_defn.aves:
+            ave_val = lttr_defn.aves[pft_key]
+        else:
+            ave_val = 0.0
 
-    mess = 'veget type: ' + pft_key + '  average value: ' + str(round(float(ave_val), 2))
+        mess = 'veget type: ' + pft_key + '  average value: ' + str(round(float(ave_val), 2))
+
     form.w_ave_val.setText(mess)
 
     return None

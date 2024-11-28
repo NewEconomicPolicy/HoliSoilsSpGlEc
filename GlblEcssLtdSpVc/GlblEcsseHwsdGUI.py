@@ -41,6 +41,8 @@ STD_FLD_SIZE_180 = 180
 STD_FLD_SIZE_200 = 200
 STD_FLD_SIZE_250 = 250
 
+CARBON_VARS = {'TOTAL_BM_LITTER_c': 'total conversion of biomass to litter',
+                                                            'TOTAL_LITTER_SOIL_c': 'total litter and soil carbon'}
 ERROR_STR = '*** Error *** '
 WARN_STR = '*** Warning *** '
 
@@ -115,6 +117,28 @@ class Form(QWidget):
         w_nc_extnt = QLabel('')  # number of lat lons
         grid.addWidget(w_nc_extnt, irow, 1, 1, 4)
         self.w_nc_extnt = w_nc_extnt
+
+        # ============= select ochidee var =====================
+        irow += 1
+        lbl08 = QLabel('Carbon variable:')
+        lbl08.setAlignment(Qt.AlignRight)
+        helpText = ''
+        lbl08.setToolTip(helpText)
+        grid.addWidget(lbl08, irow, 0)
+
+        combo08 = QComboBox()
+        for carbon_var in CARBON_VARS:
+            combo08.addItem(carbon_var)
+        combo08.setFixedWidth(STD_FLD_SIZE_180)
+        grid.addWidget(combo08, irow, 1)
+        combo08.currentIndexChanged[str].connect(self.changeCarbonVar)
+        self.combo08 = combo08
+
+        w_var_desc = QLabel('')  # variable description
+        grid.addWidget(w_var_desc, irow, 2, 1, 3)
+        self.w_var_desc = w_var_desc
+
+        self.carbon_vars = CARBON_VARS
 
         # ======== PFTs ==========
         irow += 1
@@ -322,6 +346,15 @@ class Form(QWidget):
         read_config_file(self)
 
         self.combo10w.currentIndexChanged[str].connect(self.weatherResourceChanged)
+
+    def changeCarbonVar(self):
+        """
+
+        """
+        carbon_var = self.combo08.currentText()
+        self.w_var_desc.setText(self.carbon_vars[carbon_var])
+        fname = self.w_nc_lttr_fn.text()
+        fetch_nc_litter(self, fname)
 
     def viewRunReport(self):
         """

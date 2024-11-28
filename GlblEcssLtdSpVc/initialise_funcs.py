@@ -22,7 +22,8 @@ from weather_datasets import change_weather_resource, record_weather_settings
 from glbl_ecss_cmmn_cmpntsGUI import calculate_grid_cell
 from litter_and_orchidee_fns import fetch_nc_litter
 
-MIN_GUI_LIST = ['weatherResource', 'aveWthrFlag', 'bbox', 'plntFncTyp', 'piNcFname', 'maxSims', 'endBand', 'strtBand']
+MIN_GUI_LIST = ['weatherResource', 'aveWthrFlag', 'bbox', 'plntFncTyp', 'piNcFname', 'carbonVar',
+                                                                                'maxSims', 'endBand', 'strtBand']
 CMN_GUI_LIST = ['study', 'histStrtYr', 'histEndYr', 'climScnr', 'futStrtYr', 'futEndYr', 'gridResol', 'eqilMode']
 
 BBOX_DEFAULT = [116.90045, 28.2294, 117.0, 29.0]  # bounding box default - somewhere in SE Europe
@@ -51,6 +52,8 @@ def read_config_file(form):
         if key not in config[grp]:
             if key == 'piNcFname':
                 config[grp][key] = ''
+            elif key == 'carbonVar':
+                config[grp][key] = 'TOTAL_LITTER_SOIL_c'
             elif key == 'plntFncTyp':
                 config[grp][key] = 'SoilBareGlobal'
             elif key == 'maxSims':
@@ -77,6 +80,8 @@ def read_config_file(form):
     fetch_nc_litter(form, nc_fn)
     form.w_nc_lttr_fn.setText(nc_fn)
     form.w_combo_pfts.setCurrentText(config[grp]['plntFncTyp'])
+
+    form.combo08.setCurrentText(config[grp]['carbonVar'])
 
     weather_resource = config[grp]['weatherResource']
     ave_weather = config[grp]['aveWthrFlag']
@@ -200,6 +205,7 @@ def write_config_file(form, message_flag=True):
             'aveWthrFlag': form.w_ave_weather.isChecked(),
             'plntFncTyp': form.w_combo_pfts.currentText(),
             'piNcFname': form.w_nc_lttr_fn.text(),
+            'carbonVar': form.combo08.currentText(),
             'usePolyFlag': False,
             'maxSims': form.w_max_sims.text(),
             'strtBand': form.w_strt_band.text(),

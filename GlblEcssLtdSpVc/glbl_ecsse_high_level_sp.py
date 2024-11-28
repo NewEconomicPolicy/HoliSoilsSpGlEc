@@ -127,7 +127,10 @@ def _generate_ecosse_files(form, climgen, mask_defn, num_band):
         mask_defn.nc_dset = Dataset(mask_defn.nc_fname, mode='r')
 
     pft_name = form.w_combo_pfts.currentText()
-    pft_key = list({elem for elem in form.pfts if form.pfts[elem] == pft_name})[0]
+    if pft_name == '':
+        pft_key = None
+    else:
+        pft_key = list({elem for elem in form.pfts if form.pfts[elem] == pft_name})[0]
 
     last_time = time()
     start_time = time()
