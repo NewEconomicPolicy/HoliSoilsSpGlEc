@@ -180,10 +180,11 @@ def _generate_ecosse_files(form, climgen, mask_defn, num_band):
             if yrs_pi is None:
                 no_yrs_pi += 1
                 continue
-
+            '''
             if all(val == 0 for val in yrs_pi['pis']):
                 no_pis += 1
                 continue
+            '''
 
             yrs_pi = resize_yrs_pi(climgen.sim_start_year, climgen.sim_end_year, yrs_pi)
 
