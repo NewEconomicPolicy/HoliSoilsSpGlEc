@@ -23,7 +23,7 @@ from glbl_ecss_cmmn_cmpntsGUI import calculate_grid_cell
 from litter_and_orchidee_fns import fetch_nc_litter
 
 MIN_GUI_LIST = ['weatherResource', 'aveWthrFlag', 'bbox', 'plntFncTyp', 'piNcFname', 'carbonVar',
-                                                                                'maxSims', 'endBand', 'strtBand']
+                                                                'maxSims', 'endBand', 'strtBand', 'baseLine']
 CMN_GUI_LIST = ['study', 'histStrtYr', 'histEndYr', 'climScnr', 'futStrtYr', 'futEndYr', 'gridResol', 'eqilMode']
 
 BBOX_DEFAULT = [116.90045, 28.2294, 117.0, 29.0]  # bounding box default - somewhere in SE Europe
@@ -62,6 +62,8 @@ def read_config_file(form):
                 config[grp][key] = str(0)
             elif key == 'endBand':
                 config[grp][key] = str(360)
+            elif key == 'baseLine':
+                config[grp][key] = False
             else:
                 print(ERROR_STR + 'setting {} is required in group {} of config file {}'.format(key, grp, config_file))
                 return False
@@ -73,6 +75,7 @@ def read_config_file(form):
     form.w_max_sims.setText(config[grp]['maxSims'])
     form.w_strt_band.setText(config[grp]['strtBand'])
     form.w_end_band.setText(config[grp]['endBand'])
+    form.w_baseline.setChecked(config[grp]['baseLine'])
 
     # enable VC ORCHIDEE NC file
     # ===========================
@@ -207,6 +210,7 @@ def write_config_file(form, message_flag=True):
             'piNcFname': form.w_nc_lttr_fn.text(),
             'carbonVar': form.combo08.currentText(),
             'usePolyFlag': False,
+            'baseLine': form.w_baseline.isChecked(),
             'maxSims': form.w_max_sims.text(),
             'strtBand': form.w_strt_band.text(),
             'endBand': form.w_end_band.text()

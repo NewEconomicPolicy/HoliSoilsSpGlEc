@@ -20,10 +20,9 @@ from PyQt5.QtWidgets import QApplication
 ERROR_STR = '*** Error *** '
 WARN_STR = '*** Warning *** '
 
-CNVRSN_FACT = 10000 * 365 / 1000  # converts gC/m**2/day to kgC/ha/yr
 CNVRSN_FACT_BM_LITTER = 10000 * 365 / 1000  # gC/m**2/day to kgC/ha/yr
-CNVRSN_FACT_LITTER_SOIL = 10000 / 1000  # gC/m**2 to kgC/ha
-CNVRSN_FACT = 10000 / 1000  # gC/m**2 to kgC/ha
+CNVRSN_FACT_LITTER_SOIL = 10000 / 1000      # gC/m**2 to kgC/ha
+
 OCHIDEE_MANDAT_VARS = ('lat', 'lon', 'veget', 'TOTAL_BM_LITTER_c', 'TOTAL_LITTER_SOIL_c', 'TOTAL_SOIL_c')
 OCHIDEE_OVERRIDE_YEAR = 1970
 
@@ -140,7 +139,7 @@ class OchideeSet(object, ):
                 start_date = num2date(int(time_var[0]), units=time_var.units, calendar=time_var.calendar)
                 start_year = start_date.year
 
-                start_year = OCHIDEE_OVERRIDE_YEAR
+                start_year = OCHIDEE_OVERRIDE_YEAR      # e.g. 1970
                 print('\t' + WARN_STR + 'Start year set to: {}'.format(start_year))
                 QApplication.processEvents()
 
@@ -207,7 +206,15 @@ class OchideeSet(object, ):
             if tmp_vals.sum() == 0.0:
                 print('\t' + WARN_STR + 'No data for vegetation type: ' + pft_key + ' PFT: ' + pfts[pft_key])
 
-            vals[pft_key] = tmp_vals
+            if carbon_var == 'TOTAL_LITTER_SOIL_c':
+                tmp_vals2 = nc_dset.variables['TOTAL_SOIL_c'][:, pft_indx, :, :]
+                tmp_vals3 = tmp_vals - tmp_vals2
+                tmp_vals = tmp_vals3                    # TODO: check if necessary
+                CNVRSN_FACT = CNVRSN_FACT_LITTER_SOIL   # gC/m**2 to kgC/ha
+            else:
+                CNVRSN_FACT = CNVRSN_FACT_BM_LITTER     # gC/m**2/day to kgC/ha/yr
+
+            vals[pft_key] = CNVRSN_FACT * tmp_vals
             aves[pft_key] = CNVRSN_FACT * tmp_vals.mean()
 
             for lat_indx in range(nlats):
@@ -227,7 +234,7 @@ class OchideeSet(object, ):
         self.start_year = start_year
         self.end_year = end_year
 
-    def get_ochidee_nc_data(self, pft_key, lat, long):
+    def get_ochidee_nc_data(self, pft_key, lat, long, baseline_flag):
         """
         retrieve data on condition that lat, long are within bounds and data is present
         """
@@ -262,7 +269,10 @@ class OchideeSet(object, ):
                     vals = list(slice)
 
             plnt_inpts['yrs'] = [yr for yr in range(strt_yr, strt_yr + nyears)]
-            plnt_inpts['pis'] = [CNVRSN_FACT * val for val in vals]
+            if baseline_flag:
+                plnt_inpts['pis'] = nyears*[0]
+            else:
+                plnt_inpts['pis'] = [val for val in vals]
         else:
             plnt_inpts = None
 

@@ -176,7 +176,7 @@ def _generate_ecosse_files(form, climgen, mask_defn, num_band):
             form.lgr.info(mess)
             no_wthr += 1
         else:
-            yrs_pi = form.litter_defn.get_ochidee_nc_data(pft_key, lat, long)
+            yrs_pi = form.litter_defn.get_ochidee_nc_data(pft_key, lat, long, form.w_baseline.isChecked())
             if yrs_pi is None:
                 no_yrs_pi += 1
                 continue
@@ -303,6 +303,7 @@ def generate_banded_sims(form):
     nbands = int((lat_ur - lat_ll)/lat_step) + 1
     start_at_band = int(form.w_strt_band.text())
     end_at_band = int(form.w_end_band.text())
+    nbands_to_prcss = end_at_band - start_at_band + 1
     print('Total # bands: {}\tstarting and ending at bands {} and {}'.format(nbands, start_at_band, end_at_band))
     QApplication.processEvents()
 
@@ -324,7 +325,7 @@ def generate_banded_sims(form):
             form.bbox = list([lon_ll, lat_ll_new, lon_ur, lat_ur])
 
             print('\nProcessing band {} of {} with latitude extent of min: {}\tmax: {}'
-                                                .format(num_band, nbands, round(lat_ll_new,6), round(lat_ur, 6)))
+                                            .format(num_band, nbands_to_prcss, round(lat_ll_new,6), round(lat_ur, 6)))
             QApplication.processEvents()
 
             report = _generate_ecosse_files(form, climgen, mask_defn, num_band)  # does actual work

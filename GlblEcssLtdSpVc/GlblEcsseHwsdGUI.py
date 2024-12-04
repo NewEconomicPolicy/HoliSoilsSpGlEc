@@ -173,7 +173,8 @@ class Form(QWidget):
                    ' discard all others. The the most dominant soil is defined as having the highest percentage coverage ' \
                    ' of all the soils for that grid cell'
         w_use_dom_soil.setToolTip(helpText)
-        grid.addWidget(w_use_dom_soil, irow, 1, 1, 2)
+        # grid.addWidget(w_use_dom_soil, irow, 1, 1, 2)
+        grid.addWidget(w_use_dom_soil, irow, 1)
         self.w_use_dom_soil = w_use_dom_soil
 
         w_use_high_cover = QCheckBox('Use highest coverage soil')
@@ -181,8 +182,16 @@ class Form(QWidget):
                    ' as a proportion of the area of the meta cell. Select this option to use the mu global with the highest coverage,\n' \
                    ' discard the others and aggregate their coverages to the selected mu global'
         w_use_high_cover.setToolTip(helpText)
-        grid.addWidget(w_use_high_cover, irow, 3, 1, 2)
+        # grid.addWidget(w_use_high_cover, irow, 3, 1, 2)
+        grid.addWidget(w_use_high_cover, irow, 2)
         self.w_use_high_cover = w_use_high_cover
+
+        w_baseline = QCheckBox('Create baseline')
+        helpText = 'set PIs to zero'
+        w_baseline.setToolTip(helpText)
+        # grid.addWidget(w_baseline, irow, 3, 1, 2)
+        grid.addWidget(w_baseline, irow, 3)
+        self.w_baseline = w_baseline
 
         # AOI bounding box detail
         # =======================
