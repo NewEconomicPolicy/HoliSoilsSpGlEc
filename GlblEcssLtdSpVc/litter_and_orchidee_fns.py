@@ -41,7 +41,13 @@ def fetch_nc_litter(form, fname):
         return None
 
     if not check_ochidee_dset(fname):
+        form.w_create_files.setEnabled(False)
+        form.w_run_ecosse.setEnabled(False)
+        form.w_nc_extnt.setText('')
         return None
+
+    form.w_create_files.setEnabled(True)
+    form.w_run_ecosse.setEnabled(True)
 
     pfts = form.pfts
 
