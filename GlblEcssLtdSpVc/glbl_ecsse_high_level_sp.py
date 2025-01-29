@@ -130,7 +130,7 @@ def _generate_ecosse_files(form, climgen, mask_defn, num_band):
     if pft_name == '':
         pft_key = None
     else:
-        pft_key = list({elem for elem in form.pfts if form.pfts[elem] == pft_name})[0]
+        pft_key = '00'
 
     last_time = time()
     start_time = time()
@@ -176,7 +176,7 @@ def _generate_ecosse_files(form, climgen, mask_defn, num_band):
             form.lgr.info(mess)
             no_wthr += 1
         else:
-            yrs_pi = form.litter_defn.get_ochidee_nc_data(pft_key, lat, long, form.w_baseline.isChecked())
+            yrs_pi = form.litter_defn.get_efiscen_nc_data(pft_key, lat, long, form.w_baseline.isChecked())
             if yrs_pi is None:
                 no_yrs_pi += 1
                 continue
@@ -288,7 +288,7 @@ def generate_banded_sims(form):
         del soil_recs[mu_global]
 
     form.hwsd_mu_globals.soil_recs = simplify_soil_recs(soil_recs, use_dom_soil_flag)
-    form.hwsd_mu_globals.bad_mu_globals = [0] +  hwsd.bad_muglobals
+    form.hwsd_mu_globals.bad_mu_globals = [0] + hwsd.bad_muglobals
     del hwsd; del soil_recs
     lat_ur_aoi = form.hwsd_mu_globals.lat_ur_aoi
 
@@ -307,6 +307,7 @@ def generate_banded_sims(form):
     print('Total # bands: {}\tstarting and ending at bands {} and {}'.format(nbands, start_at_band, end_at_band))
     QApplication.processEvents()
 
+    num_band = -999
     band_reports = []
     for iband in range(nbands):
         lat_ll_new = lat_ur - lat_step

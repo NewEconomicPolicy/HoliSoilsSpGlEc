@@ -32,7 +32,7 @@ from generate_soil_vars_nc import make_soil_nc_outputs
 from weather_datasets import change_weather_resource
 from initialise_funcs import read_config_file
 from initialise_common_funcs import initiation, build_and_display_studies, write_runsites_config_file
-from litter_and_orchidee_fns import fetch_nc_litter, orchidee_pfts
+from litter_and_orchidee_fns import fetch_nc_litter
 from set_up_logging import OutLog
 
 STD_BTN_SIZE_100 = 100
@@ -56,7 +56,6 @@ class Form(QWidget):
 
         self.version = 'HWSD_grid'
         initiation(self, '_spvc')
-        self.pfts = orchidee_pfts()
         font = QFont(self.font())
         font.setPointSize(font.pointSize() + 2)
         self.setFont(font)
@@ -148,8 +147,7 @@ class Form(QWidget):
 
         w_combo_pfts = QComboBox()
         w_combo_pfts.setFixedWidth(STD_FLD_SIZE_250)
-        for pft in self.pfts:
-            w_combo_pfts.addItem(self.pfts[pft])
+        w_combo_pfts.addItem('dummy')
         grid.addWidget(w_combo_pfts, irow, 1, 1, 2)
         w_combo_pfts.currentIndexChanged[str].connect(self.changePlntFncType)
         self.w_combo_pfts = w_combo_pfts
@@ -430,22 +428,10 @@ class Form(QWidget):
         """
         pft_name = self.w_combo_pfts.currentText()
         if pft_name != '':
-            if self.litter_defn.dset_type == 'EFISCEN':
-                pft_key = '00'
-                ave_val = self.litter_defn.aves[pft_key]
-                mess = 'average value: ' + str(round(float(ave_val), 2))
-                self.w_ave_val.setText(mess)
-            else:
-                pfts = self.pfts
-                pft_key = list({elem for elem in pfts if pfts[elem] == pft_name})[0]
-
-                ave_val = 0.0
-                if hasattr(self, 'litter_defn'):
-                    if pft_key in self.litter_defn.aves:
-                        ave_val = self.litter_defn.aves[pft_key]
-
-                mess = 'veget type: ' + pft_key + '  average: ' + str(round(float(ave_val), 2))
-                self.w_ave_val.setText(mess)
+            pft_key = '00'
+            ave_val = self.litter_defn.aves[pft_key]
+            mess = 'average value: ' + str(round(float(ave_val), 2))
+            self.w_ave_val.setText(mess)
 
     def cleanlicked(self):
         """

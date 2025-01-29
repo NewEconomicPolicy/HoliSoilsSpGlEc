@@ -15,12 +15,12 @@ __version__ = '0.0.0'
 # ---------------
 # 
 from os.path import exists, isfile, join
-from  json import dump as json_dump, load as json_load
+from json import dump as json_dump, load as json_load
 
 from shape_funcs import calculate_area
 from weather_datasets import change_weather_resource, record_weather_settings
 from glbl_ecss_cmmn_cmpntsGUI import calculate_grid_cell
-from litter_and_orchidee_fns import fetch_nc_litter
+from litter_and_orchidee_fns import fetch_nc_litter, check_efiscen_dset
 
 MIN_GUI_LIST = ['weatherResource', 'aveWthrFlag', 'bbox', 'plntFncTyp', 'piNcFname', 'carbonVar',
                                                                 'maxSims', 'endBand', 'strtBand', 'baseLine']
@@ -80,7 +80,12 @@ def read_config_file(form):
     # enable VC ORCHIDEE NC file
     # ===========================
     nc_fn = config[grp]['piNcFname']
-    fetch_nc_litter(form, nc_fn)
+    if check_efiscen_dset(nc_fn):
+        fetch_nc_litter(form, nc_fn)
+        form.w_create_files.setEnabled(True)
+    else:
+        form.w_create_files.setEnabled(False)
+
     form.w_nc_lttr_fn.setText(nc_fn)
     form.w_combo_pfts.setCurrentText(config[grp]['plntFncTyp'])
 

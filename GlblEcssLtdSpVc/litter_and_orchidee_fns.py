@@ -1,12 +1,12 @@
-#-------------------------------------------------------------------------------
-# Name:        litter_and_orchidee_fns.py
+# -------------------------------------------------------------------------------
+# Name:        litter_and_efiscen_fns.py
 # Purpose:     script to create objects describing NC data sets
 # Author:      Mike Martin
 # Created:     31/05/2020
 # Licence:     <your licence>
-#-------------------------------------------------------------------------------
+# -------------------------------------------------------------------------------
 
-__prog__ = 'litter_and_orchidee_fns.py'
+__prog__ = 'litter_and_efiscen_fns.py'
 __version__ = '0.0.0'
 
 # Version history
@@ -20,14 +20,8 @@ from PyQt5.QtWidgets import QApplication
 ERROR_STR = '*** Error *** '
 WARN_STR = '*** Warning *** '
 
-CNVRSN_FACT_BM_LITTER = 10000 * 365 / 1000  # gC/m**2/day to kgC/ha/yr
-CNVRSN_FACT_LITTER_SOIL = 10000 / 1000      # gC/m**2 to kgC/ha
-
-OCHIDEE_MANDAT_VARS = ('lat', 'lon', 'veget', 'TOTAL_BM_LITTER_c', 'TOTAL_LITTER_SOIL_c', 'TOTAL_SOIL_c')
-
 EFISCEN_CARBON_VAR = 'TOTAL_BM_LITTER_c'
 EFISCEN_MANDAT_VARS = ('lat', 'lon', EFISCEN_CARBON_VAR)       # EFISCEN | European Forest Institute
-OCHIDEE_OVERRIDE_YEAR = 1970
 
 def fetch_nc_litter(form, fname):
     """
@@ -43,28 +37,25 @@ def fetch_nc_litter(form, fname):
         print(mess)
         return None
 
-    if not check_ochidee_dset(fname):
+    if check_efiscen_dset(fname):
+        form.w_create_files.setEnabled(True)
+    else:
+        form.w_create_files.setEnabled(False)
         return None
 
-    pfts = form.pfts
-
     carbon_var = form.combo08.currentText()
-    lttr_defn = OchideeSet(fname, pfts, carbon_var)
+    lttr_defn = EfiscenSet(fname)
     form.litter_defn = lttr_defn
     form.w_nc_extnt.setText(lttr_defn.nc_extnt)
 
     # reset PFT combo widget
     # ======================
     form.w_combo_pfts.clear()
-    if lttr_defn.dset_type == 'EFISCEN':
-        form.combo08.setCurrentText(EFISCEN_CARBON_VAR)
-        form.combo08.setEnabled(False)
-        form.w_var_desc.setText(form.carbon_vars[carbon_var])
-        form.w_combo_pfts.addItem('total biomass litter C')
-    else:
-        form.combo08.setEnabled(True)
-        for pft in lttr_defn.aves:
-            form.w_combo_pfts.addItem(form.pfts[pft])
+
+    form.combo08.setCurrentText(EFISCEN_CARBON_VAR)
+    form.combo08.setEnabled(False)
+    form.w_var_desc.setText(form.carbon_vars[carbon_var])
+    form.w_combo_pfts.addItem('total biomass litter C')
 
     # report average value
     # ====================
@@ -73,72 +64,48 @@ def fetch_nc_litter(form, fname):
         mess = 'No data for ' + carbon_var
         form.w_ave_val.setText(mess)
     else:
-        if form.litter_defn.dset_type == 'EFISCEN':
-            pft_key = '00'
-            ave_val = form.litter_defn.aves[pft_key]
-            mess = 'average value: ' + str(round(float(ave_val), 2))
-        else:
-            pft_key = list({elem for elem in pfts if pfts[elem] == pft_name})[0]
-            if pft_key in lttr_defn.aves:
-                ave_val = lttr_defn.aves[pft_key]
-            else:
-                ave_val = 0.0
-
-            mess = 'veget type: ' + pft_key + '  average value: ' + str(round(float(ave_val), 2))
+        pft_key = '00'
+        ave_val = form.litter_defn.aves[pft_key]
+        mess = 'average value: ' + str(round(float(ave_val), 2))
 
     form.w_ave_val.setText(mess)
 
     return None
 
-def check_ochidee_dset(nc_fname):
+def check_efiscen_dset(nc_fname):
     """
     C
     """
     nc_fname = normpath(nc_fname)
     nc_dset = Dataset(nc_fname)
 
-    # check for OCHIDEE dataset
+    # check for EFISCEN dataset
     # =========================
-    ochidee_flag = True
+    efiscen_flag = True
     vars_not_prsnt = []
-    for var in OCHIDEE_MANDAT_VARS:
+    for var in EFISCEN_MANDAT_VARS:
         if var not in nc_dset.variables:
             vars_not_prsnt.append(var)
 
-    if len(vars_not_prsnt) == 0:
+    if len(vars_not_prsnt) > 0 or len(nc_dset.variables[EFISCEN_CARBON_VAR].shape) != 3:
         efiscen_flag = False
-    else:
-        ochidee_flag = False
-
-        # check for EFISCEN dataset
-        # =========================
-        efiscen_flag = True
-        vars_not_prsnt = []
-        for var in EFISCEN_MANDAT_VARS:
-            if var not in nc_dset.variables:
-                vars_not_prsnt.append(var)
-
-        if len(vars_not_prsnt) > 0:
-            efiscen_flag = False
 
     nc_dset.close()
 
-    if not ochidee_flag and not efiscen_flag:
-        print(ERROR_STR + 'invalid dataset, could not be identified as OCHIDEE or EFISCEN')
-    elif ochidee_flag:
-        print('Dataset ' + nc_fname + ' is identified as OCHIDEE')
-    else:
+    if efiscen_flag:
         print('Dataset ' + nc_fname + ' is identified as EFISCEN')
+    else:
+        print(ERROR_STR + 'invalid dataset, could not be identified as EFISCEN')
 
-    return ochidee_flag, efiscen_flag
+    return efiscen_flag
 
-class OchideeSet(object, ):
+class EfiscenSet(object, ):
     """
-    Create object from an OCHIDEE NC file
+    Create object from an EFISCEN NC file
     """
-    def __init__(self, nc_fname, pfts, carbon_var):
+    def __init__(self, nc_fname):
         """
-        assumption is that dataset has been pre-checked using check_ochidee_dset function
+        assumption is that dataset has been pre-checked using check_efiscen_dset function
         """
         lat_var = 'lat'
         lon_var = 'lon'
@@ -146,7 +113,7 @@ class OchideeSet(object, ):
         nc_fname = normpath(nc_fname)
 
         nc_dset = Dataset(nc_fname)
-        print('\nReading OCHIDEE file ' + nc_fname)
+        print('\nReading EFISCEN file ' + nc_fname)
 
         lats = nc_dset.variables[lat_var][:]
         nlats = len(lats)
@@ -154,12 +121,8 @@ class OchideeSet(object, ):
         nlons = len(lons)
         lookup_table = zeros((nlats, nlons), dtype=bool)
 
-        if 'veget' in nc_dset.variables:
-            dset_type = 'OCHIDEE'
-            nvegets = len(nc_dset.variables['veget'])
-        else:
-            dset_type = 'EFISCEN'
-            nvegets = 0
+        dset_type = 'EFISCEN'
+        nyears = -999
 
         # record var names
         # ================
@@ -173,20 +136,7 @@ class OchideeSet(object, ):
 
             # stanza to get start of time series
             # ==================================
-            if var == 'time_centered':
-
-                time_var = nc_dset.variables[var]
-                nyears = len(time_var)
-                start_date = num2date(int(time_var[0]), units=time_var.units, calendar=time_var.calendar)
-                start_year = start_date.year
-
-                start_year = OCHIDEE_OVERRIDE_YEAR      # e.g. 1970
-                print('\t' + WARN_STR + 'Start year set to: {}'.format(start_year))
-                QApplication.processEvents()
-
-                end_year = start_year + nyears - 1
-
-            if var == 'time' and dset_type == 'EFISCEN':
+            if var == 'time':
                 time_var = nc_dset.variables[var]
                 nyears = len(time_var)
                 start_year = time_var[0]
@@ -240,16 +190,13 @@ class OchideeSet(object, ):
 
         extent_lats = 'N latitudes: {}   extent: {} {}\t'.format(nlats, lat_frst, lat_last)
         extent_lons = 'N longitudes: {}   extent: {} {}\t'.format(nlons, lon_frst, lon_last)
-        grid_resol =  'grid resolution: {}'.format(self.resol_lat)
+        grid_resol = 'grid resolution: {}'.format(self.resol_lat)
         self.nc_extnt = extent_lats + extent_lons + grid_resol
 
         # Create a boolean table of cells with and without data
         # =====================================================
-        if dset_type == 'EFISCEN':
-            vals, aves, lookup_table = fetch_efiscen_vals(nc_dset, nyears, nlats, nlons, lookup_table)
-        else:
-            vals, aves, lookup_table = fetch_orchidee_vals(nc_dset, carbon_var, nvegets,
-                                                           pfts, nyears, nlats, nlons, lookup_table)
+        vals, aves, lookup_table = fetch_efiscen_vals(nc_dset, nyears, nlats, nlons, lookup_table)
+
         nc_dset.close()
 
         self.lookup_table = lookup_table
@@ -259,12 +206,11 @@ class OchideeSet(object, ):
         self.start_year = start_year
         self.end_year = end_year
 
-    def get_ochidee_nc_data(self, pft_key, lat, long, baseline_flag):
+    def get_efiscen_nc_data(self, pft_key, lat, long, baseline_flag):
         """
         retrieve data on condition that lat, long are within bounds and data is present
         """
         wthn_bnds = True
-        data = None
 
         lat_indx = int(round((lat - self.lat_frst)/self.resol_lat))
         lon_indx = int(round((long - self.lon_frst)/self.resol_lon))
@@ -286,7 +232,7 @@ class OchideeSet(object, ):
             if pft_key is None:
                 vals = nyears * [0]
             else:
-                slice = self.vals[pft_key][:, lat_indx, lon_indx]
+                slice = self.vals[pft_key][lat_indx, lon_indx, :]
                 is_masked = ma.is_masked(slice)
                 if is_masked:
                     vals = ma.getdata(slice)
@@ -333,7 +279,7 @@ def resize_yrs_pi(sim_strt_yr, sim_end_yr, yrs_pi):
 
 def fetch_efiscen_vals(nc_dset, nyears, nlats, nlons, lookup_table):
     """
-    Vegetation and corresponding plant functional type as defined in OCHIDEE model
+    Vegetation and corresponding plant functional type as defined in EFISCEN model
     """
     vals = {}
     aves = {}
@@ -344,66 +290,14 @@ def fetch_efiscen_vals(nc_dset, nyears, nlats, nlons, lookup_table):
 
     for lat_indx in range(nlats):
         for lon_indx in range(nlons):
-            n_masked = ma.count_masked(vals[pft_key][lat_indx, lon_indx, :])
+            try:
+                n_masked = ma.count_masked(vals[pft_key][lat_indx, lon_indx, :])
+            except IndexError as err:
+                continue
+
             if n_masked == nyears:
                 lookup_table[lat_indx][lon_indx] = False
             else:
                 lookup_table[lat_indx][lon_indx] = True
 
         return vals, aves, lookup_table
-
-def fetch_orchidee_vals(nc_dset, carbon_var, nvegets, pfts, nyears, nlats, nlons, lookup_table):
-    """
-    Vegetation and corresponding plant functional type as defined in OCHIDEE model
-    """
-    vals = {}
-    aves = {}
-    for pft_indx in range(nvegets):
-        pft_key = '{0:0=2d}'.format(pft_indx + 1)
-        tmp_vals = nc_dset.variables[carbon_var][:, pft_indx, :, :]  # TOTAL_BM_LITTER_c or TOTAL_LITTER_SOIL_c
-
-        if tmp_vals.sum() == 0.0:
-            print('\t' + WARN_STR + 'No data for vegetation type: ' + pft_key + ' PFT: ' + pfts[pft_key])
-
-        if carbon_var == 'TOTAL_LITTER_SOIL_c':
-            tmp_vals2 = nc_dset.variables['TOTAL_SOIL_c'][:, pft_indx, :, :]
-            tmp_vals3 = tmp_vals - tmp_vals2
-            tmp_vals = tmp_vals3  # TODO: check if necessary
-            CNVRSN_FACT = CNVRSN_FACT_LITTER_SOIL  # gC/m**2 to kgC/ha
-        else:
-            CNVRSN_FACT = CNVRSN_FACT_BM_LITTER  # gC/m**2/day to kgC/ha/yr
-
-        vals[pft_key] = CNVRSN_FACT * tmp_vals
-        aves[pft_key] = CNVRSN_FACT * tmp_vals.mean()
-
-        for lat_indx in range(nlats):
-            for lon_indx in range(nlons):
-                n_masked = ma.count_masked(vals[pft_key][:, lat_indx, lon_indx])
-                if n_masked == nyears:
-                    lookup_table[lat_indx][lon_indx] = False
-                else:
-                    lookup_table[lat_indx][lon_indx] = True
-
-        return vals, aves, lookup_table
-
-def orchidee_pfts():
-    """
-    Vegetation and corresponding plant functional type as defined in OCHIDEE model
-    """
-    pfts = {'01': 'SoilBareGlobal',
-            '02': 'BroadLeavedEvergreenTropical',
-            '03': 'BroadLeavedRaingreenTropical',
-            '04': 'NeedleleafEvergreenTemperate',
-            '05': 'BroadLeavedEvergreenTemperate',
-            '06': 'BroadLeavedSummergreenTemperate',
-            '07': 'NeedleleafEvergreenBoreal',
-            '08': 'BroadLeavedSummergreenBoreal',
-            '09': 'LarixSpBoreal',
-            '10': 'C3GrassTemperate',
-            '11': 'C4GrassTemperate',
-            '12': 'C3AgricultureTemperate',
-            '13': 'C4AgricultureTemperate',
-            '14': 'C3GrassTropical',
-            '15': 'C3GrassBoreal'}
-
-    return pfts
