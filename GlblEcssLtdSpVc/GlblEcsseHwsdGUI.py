@@ -430,16 +430,22 @@ class Form(QWidget):
         """
         pft_name = self.w_combo_pfts.currentText()
         if pft_name != '':
-            pfts = self.pfts
-            pft_key = list({elem for elem in pfts if pfts[elem] == pft_name})[0]
+            if self.litter_defn.dset_type == 'EFISCEN':
+                pft_key = '00'
+                ave_val = self.litter_defn.aves[pft_key]
+                mess = 'average value: ' + str(round(float(ave_val), 2))
+                self.w_ave_val.setText(mess)
+            else:
+                pfts = self.pfts
+                pft_key = list({elem for elem in pfts if pfts[elem] == pft_name})[0]
 
-            ave_val = 0.0
-            if hasattr(self, 'litter_defn'):
-                if pft_key in self.litter_defn.aves:
-                    ave_val = self.litter_defn.aves[pft_key]
+                ave_val = 0.0
+                if hasattr(self, 'litter_defn'):
+                    if pft_key in self.litter_defn.aves:
+                        ave_val = self.litter_defn.aves[pft_key]
 
-            mess = 'veget type: ' + pft_key + '  average: ' + str(round(float(ave_val), 2))
-            self.w_ave_val.setText(mess)
+                mess = 'veget type: ' + pft_key + '  average: ' + str(round(float(ave_val), 2))
+                self.w_ave_val.setText(mess)
 
     def cleanlicked(self):
         """
