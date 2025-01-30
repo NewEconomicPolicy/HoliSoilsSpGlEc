@@ -41,6 +41,8 @@ def fetch_nc_litter(form, fname):
         form.w_create_files.setEnabled(True)
     else:
         form.w_create_files.setEnabled(False)
+        form.w_nc_extnt.setText('')
+        form.w_ave_val.setText('')
         return None
 
     carbon_var = form.combo08.currentText()
@@ -119,7 +121,6 @@ class EfiscenSet(object, ):
         nlats = len(lats)
         lons = nc_dset.variables[lon_var][:]
         nlons = len(lons)
-        lookup_table = zeros((nlats, nlons), dtype=bool)
 
         dset_type = 'EFISCEN'
         nyears = -999
@@ -190,12 +191,13 @@ class EfiscenSet(object, ):
 
         extent_lats = 'N latitudes: {}   extent: {} {}\t'.format(nlats, lat_frst, lat_last)
         extent_lons = 'N longitudes: {}   extent: {} {}\t'.format(nlons, lon_frst, lon_last)
+        time_span = 'Start year: {}   End year: {}\t'.format(start_year, end_year)
         grid_resol = 'grid resolution: {}'.format(self.resol_lat)
-        self.nc_extnt = extent_lats + extent_lons + grid_resol
+        self.nc_extnt = extent_lats + extent_lons + time_span + grid_resol
 
         # Create a boolean table of cells with and without data
         # =====================================================
-        vals, aves, lookup_table = fetch_efiscen_vals(nc_dset, nyears, nlats, nlons, lookup_table)
+        vals, aves, lookup_table = fetch_efiscen_vals(nc_dset, nlats, nlons)
 
         nc_dset.close()
 
@@ -277,27 +279,26 @@ def resize_yrs_pi(sim_strt_yr, sim_end_yr, yrs_pi):
 
     return new_yrs_pi
 
-def fetch_efiscen_vals(nc_dset, nyears, nlats, nlons, lookup_table):
+def fetch_efiscen_vals(nc_dset, nlats, nlons):
     """
-    Vegetation and corresponding plant functional type as defined in EFISCEN model
+    Read plant inputs from EFISCEN dataset and create a lookup table
     """
     vals = {}
     aves = {}
     pft_key = '00'
+    lookup_table = zeros((nlats, nlons), dtype=bool)
+
     tmp_vals = nc_dset.variables[EFISCEN_CARBON_VAR][:, :, :]
     vals[pft_key] = tmp_vals
     aves[pft_key] = tmp_vals.mean()
 
     for lat_indx in range(nlats):
         for lon_indx in range(nlons):
-            try:
-                n_masked = ma.count_masked(vals[pft_key][lat_indx, lon_indx, :])
-            except IndexError as err:
-                continue
 
-            if n_masked == nyears:
-                lookup_table[lat_indx][lon_indx] = False
-            else:
+            val_mean = tmp_vals[lat_indx, lon_indx, :].mean()
+            if val_mean > 0.0:
                 lookup_table[lat_indx][lon_indx] = True
+            else:
+                lookup_table[lat_indx][lon_indx] = False
 
-        return vals, aves, lookup_table
+    return vals, aves, lookup_table

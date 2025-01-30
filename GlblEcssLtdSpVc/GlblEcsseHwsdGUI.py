@@ -346,7 +346,7 @@ class Form(QWidget):
 
         # posx, posy, width, height
         self.setGeometry(200, 100, 690, 250)
-        self.setWindowTitle('Global Ecosse Ver 2b - generate sets of ECOSSE input files based on HWSD grid')
+        self.setWindowTitle('Global Ecosse Holisoils spatial variation - uses EFISCEN NetCDF plant inputs')
 
         # reads and set values from last run
         # ==================================
@@ -482,7 +482,6 @@ class Form(QWidget):
         """
         C
         """
-        func_name = __prog__ + ' createSimsClicked'
         study = self.w_study.text()
         if study == '':
             print('study cannot be blank')
@@ -586,7 +585,6 @@ def main():
     # display the GUI and start the event loop if we're not running batch mode
     form.show()  # paint form
     sys.exit(app.exec_())  # start event loop
-
 
 if __name__ == '__main__':
     main()
