@@ -12,9 +12,9 @@ __version__ = '0.0.0'
 # Version history
 # ---------------
 # 
-from os.path import exists, normpath, split, splitext, join, exists, isfile
-from numpy import arange, seterr, ma, zeros
-from netCDF4 import Dataset, num2date
+from os.path import normpath, exists
+from numpy import ma, zeros
+from netCDF4 import Dataset
 from PyQt5.QtWidgets import QApplication
 
 ERROR_STR = '*** Error *** '
@@ -143,10 +143,10 @@ class EfiscenSet(object, ):
                 start_year = time_var[0]
                 end_year = time_var[-1]
 
-        lat_frst = float(lats[0])
-        lon_frst = float(lons[0])
-        lat_last = float(lats[-1])
-        lon_last = float(lons[-1])
+        lat_frst = round(float(lats[0]), 4)
+        lon_frst = round(float(lons[0]), 4)
+        lat_last = round(float(lats[-1]), 4)
+        lon_last = round(float(lons[-1]), 4)
 
         # required for bounding box
         # =========================
@@ -165,10 +165,10 @@ class EfiscenSet(object, ):
             lon_ur = lon_frst
 
         self.dset_type = dset_type
-        self.lat_frst = float(lats[0])
-        self.lon_frst = float(lons[0])
-        self.lat_last = float(lats[-1])
-        self.lon_last = float(lons[-1])
+        self.lat_frst = lat_frst
+        self.lon_frst = lon_frst
+        self.lat_last = lat_last
+        self.lon_last = lon_last
 
         self.lat_var = lat_var
         self.lon_var = lon_var
@@ -180,8 +180,8 @@ class EfiscenSet(object, ):
 
         # resolutions
         # ===========
-        self.resol_lon = (lons[-1] - lons[0])/(nlons - 1)
-        self.resol_lat = (lats[-1] - lats[0])/(nlats - 1)
+        self.resol_lon = round((lons[-1] - lons[0])/(nlons - 1), 4)
+        self.resol_lat = round((lats[-1] - lats[0])/(nlats - 1), 4)
         self.max_lat_indx = nlats - 1
         self.max_lon_indx = nlons - 1
 
@@ -192,8 +192,8 @@ class EfiscenSet(object, ):
         extent_lats = 'N latitudes: {}   extent: {} {}\t'.format(nlats, lat_frst, lat_last)
         extent_lons = 'N longitudes: {}   extent: {} {}\t'.format(nlons, lon_frst, lon_last)
         time_span = 'Start year: {}   End year: {}\t'.format(start_year, end_year)
-        grid_resol = 'grid resolution: {}'.format(self.resol_lat)
-        self.nc_extnt = extent_lats + extent_lons + time_span + grid_resol
+        grid_resol_str = 'grid resolution: {}'.format(self.resol_lat)
+        self.nc_extnt = extent_lats + extent_lons + time_span + grid_resol_str
 
         # Create a boolean table of cells with and without data
         # =====================================================

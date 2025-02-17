@@ -38,8 +38,6 @@ def _generate_ecosse_files(form, climgen, mask_defn, num_band):
     """
     Main loop for generating ECOSSE outputs
     """
-    func_name =  __prog__ + '\t_generate_ecosse_files'
-
     study = form.study
     print('Gathering soil and climate data for study {}...'.format(study))
     snglPntFlag = False
@@ -124,7 +122,7 @@ def _generate_ecosse_files(form, climgen, mask_defn, num_band):
     # open land use NC dataset
     # ========================
     if mask_defn is not None:
-        mask_defn.nc_dset = Dataset(mask_defn.nc_fname, mode='r')
+        mask_defn.nc_dset = Dataset(mask_defn.nc_fname)
 
     pft_name = form.w_combo_pfts.currentText()
     if pft_name == '':
@@ -190,7 +188,7 @@ def _generate_ecosse_files(form, climgen, mask_defn, num_band):
 
             # create limited data object
             # ==========================
-            ltd_data = make_ltd_data_files.MakeLtdDataFiles(form, climgen, yrs_pi, comments=True)
+            ltd_data = make_ltd_data_files.MakeLtdDataFiles(form, climgen, yrs_pi)
             make_ecosse_file(form, climgen, ltd_data, site_rec, study, pettmp_grid_cell)
             completed += 1
             if completed >= max_cells:
@@ -230,7 +228,7 @@ def generate_banded_sims(form):
     lat_ll = form.litter_defn.lat_frst
     lon_ur = form.litter_defn.lon_last
     lat_ur_lttr = form.litter_defn.lat_last
-    form.bbox =  list([lon_ll, lat_ll, lon_ur, lat_ur_lttr])
+    form.bbox = list([lon_ll, lat_ll, lon_ur, lat_ur_lttr])
 
     # lat_ll_aoi is the floor i.e. least latitude, of the HWSD aoi which marks the end of the banding loop
     # ====================================================================================================
@@ -360,10 +358,10 @@ def simplify_soil_recs(soil_recs, use_dom_soil_flag):
     each mu_global points to a group of soils
     a soil group can have up to ten soils
     """
-    func_name =  __prog__ + ' _simplify_soil_recs'
+    func_name = __prog__ + ' _simplify_soil_recs'
 
-    num_raw = 0 # total number of sub-soils
-    num_compress = 0 # total number of sub-soils after compressions
+    num_raw = 0         # total number of sub-soils
+    num_compress = 0    # total number of sub-soils after compressions
 
     new_soil_recs = {}
     for mu_global in soil_recs:
