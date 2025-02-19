@@ -33,6 +33,7 @@ from weather_datasets import change_weather_resource
 from initialise_funcs import read_config_file
 from initialise_common_funcs import initiation, build_and_display_studies, write_runsites_config_file
 from litter_and_orchidee_fns import fetch_nc_litter
+from wthr_generation_fns import generate_all_weather
 from set_up_logging import OutLog
 
 STD_BTN_SIZE_100 = 100
@@ -268,13 +269,13 @@ class Form(QWidget):
 
         irow += 1
         icol = 0
-        w_clear = QPushButton("Clean sims")
-        helpText = 'Remove all simulation files for this study'
-        w_clear.setToolTip(helpText)
-        w_clear.setFixedWidth(STD_BTN_SIZE_80)
-        w_clear.setEnabled(False)
-        grid.addWidget(w_clear, irow, icol)
-        w_clear.clicked.connect(self.cleanlicked)
+        w_wthr_only = QPushButton('Create weather')
+        helpText = 'Generate weather only'
+        w_wthr_only.setToolTip(helpText)
+        w_wthr_only.setEnabled(True)
+        grid.addWidget(w_wthr_only, irow, icol)
+        w_wthr_only.clicked.connect(self.gnrtWthrClicked)
+        self.w_wthr_only = w_wthr_only
 
         icol += 1
         w_soil_outpts = QPushButton("Make soil files")
@@ -293,6 +294,15 @@ class Form(QWidget):
         grid.addWidget(w_soil_nc, irow, icol)
         w_soil_nc.clicked.connect(self.genSoilNcClicked)
         self.w_soil_nc = w_soil_nc
+
+        icol += 1
+        w_clear = QPushButton("Clean sims")
+        helpText = 'Remove all simulation files for this study'
+        w_clear.setToolTip(helpText)
+        w_clear.setFixedWidth(STD_BTN_SIZE_80)
+        w_clear.setEnabled(False)
+        grid.addWidget(w_clear, irow, icol)
+        w_clear.clicked.connect(self.cleanlicked)
 
         icol += 1
         w_clear = QPushButton("Clear window", self)
@@ -353,6 +363,14 @@ class Form(QWidget):
         read_config_file(self)
 
         self.combo10w.currentIndexChanged[str].connect(self.weatherResourceChanged)
+
+    def gnrtWthrClicked(self):
+        """
+        generate weather for all regions, scenarios and GCMs
+        """
+        generate_all_weather(self)
+
+        return
 
     def changeCarbonVar(self):
         """
