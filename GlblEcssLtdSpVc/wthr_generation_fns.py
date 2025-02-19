@@ -13,7 +13,6 @@ __version__ = '0.0.1'
 __author__ = 's03mm5'
 
 from time import time
-from locale import format_string
 from os.path import join, normpath, isdir, split
 from os import listdir, walk, makedirs
 from PyQt5.QtWidgets import QApplication
@@ -22,7 +21,7 @@ from getClimGenNC import ClimGenNC
 from getClimGenFns_ss import (fetch_WrldClim_data, open_wthr_NC_sets, get_wthr_nc_coords, join_hist_fut_to_sim_wthr)
 from glbl_ecsse_low_level_fns_sv import check_run_mask, update_wthr_progress, update_avemet_progress
 from prepare_ecosse_low_level_ss import fetch_long_term_ave_wthr_recs, make_met_files
-from mngmnt_fns_and_class import open_proj_NC_sets, close_proj_NC_sets
+# from make_site_spec_files_classes import MakeSiteFiles
 from hwsd_bil import HWSD_bil
 from hwsd_soil_class import _gran_coords_from_lat_lon
 
@@ -49,6 +48,8 @@ def generate_all_weather(form):
     lon_ur_aoi = form.hwsd_mu_globals.lon_ur_aoi
     bbox = list([lon_ll_aoi, lat_ll_aoi, lon_ur_aoi, lat_ur_aoi])
 
+    max_cells = int(form.w_max_sims.text())
+
     resol_deg = 0.5
     resol_d2 = resol_deg/2
 
@@ -69,8 +70,8 @@ def generate_all_weather(form):
     # for each GCM and SSP dataset group e.g. UKESM1-0-LL 585
     # =======================================================
     print('')
-    ntotal_wrttn = 0
-    no_data = 0
+    ntotal_wrttn, no_data, ncmpltd, nalrdys = 4*[0]
+    last_time = time()
     for wthr_set in form.weather_set_linkages['EFISCEN-ISIMIP']:
         this_gcm, scnr = wthr_set.split('_')
         if scnr == 'hist':
@@ -99,44 +100,35 @@ def generate_all_weather(form):
 
         # create weather
         # ==============
-        site_obj = MakeSiteFiles(form, climgen)
+        lat, lon = 2*[None]
+        # site_obj = MakeSiteFiles(form, climgen)
+        site_obj = None
         make_wthr_files(site_obj, lat, lon, climgen, pettmp_hist, pettmp_sim)
         ncmpltd += 1
         ntotal_wrttn += 1
 
-        last_time = update_wthr_progress(last_time, ncmpltd, nnodata, ntotal_grow, ngrowing, nno_grow,
-                                                                                                    region)
+        last_time = update_wthr_progress(last_time, ncmpltd)
         if ncmpltd >= max_cells:
             break
 
-                # finished this latitude band - report progress
-                # =============================================
-                ngrowing += ngrow_this_band
-                nalrdys += nalrdys_this_band
-                mess = '\tBand {} with lat: {}\t# growing locations: {}\t'.format(nband, lat, ngrow_this_band)
-                mess += 'already existing: {}\tskipped: {}'.format(nalrdys_this_band, nnodata)
-                form.lgr.info(mess)
-                print(mess)
+        # finished this latitude band - report progress
+        # =============================================
+        mess = 'already existing: {}\tskipped: {}'.format(nalrdys, no_data)
+        form.lgr.info(mess)
+        print(mess)
 
-                if ncmpltd >= max_cells:
-                    print('\nFinished checking after {} cells completed\tband: {}'.format(ncmpltd, nband))
-                    break
+        if ncmpltd >= max_cells:
+            print('\nFinished checking after {} cells completed'.format(ncmpltd))
+            break
 
-            # close NC files
-            # ==============
-            close_proj_NC_sets(mask_defn, yield_defn, dates_defn, fert_defns)
-            for metric in list(['precip', 'tas']):
-                hist_wthr_dsets[metric].close()
-                fut_wthr_dsets[metric].close()
+        # close NC files
+        # ==============
+        for metric in list(['precip', 'tas']):
+            hist_wthr_dsets[metric].close()
+            fut_wthr_dsets[metric].close()
 
-            ntotal_str = format_string('%d', ntotal_grow, grouping=True)
-            ntotal_prcnt = round(100 * (ngrowing / ntotal_grow), 2)
-            mess = 'Completed Region: ' + region + '\tLocations - growing: '
-            mess += '{}\tno grow: {}\ttotal: {}\t {}%'.format(ngrowing, nno_grow, ntotal_str, ntotal_prcnt)
-            print(mess)
-
-            if QUICK_FLAG:
-                break
+        if QUICK_FLAG:
+            break
 
         print('Completed weather set: ' + this_gcm + '\tScenario: ' + scnr + '\n')
 
