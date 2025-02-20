@@ -361,6 +361,10 @@ class Form(QWidget):
         # reads and set values from last run
         # ==================================
         read_config_file(self)
+        if len(self.weather_set_linkages) == 0:
+            self.w_wthr_only.setEnabled(False)
+        else:
+            self.w_wthr_only.setEnabled(True)
 
         self.combo10w.currentIndexChanged[str].connect(self.weatherResourceChanged)
 

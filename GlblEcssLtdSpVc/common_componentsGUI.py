@@ -27,6 +27,7 @@ WDGT_SIZE_40 = 40
 WDGT_SIZE_60 = 60
 WDGT_SIZE_80 = 80
 WDGT_SIZE_100 = 100
+WDGT_SIZE_120 = 120
 WDGT_SIZE_200 = 200
 
 RESOLUTIONS = {120:'30"', 30:'2\'', 20:'3\'', 10:'6\'', 8:'7\' 30"', 6:'10\'', 4:'15\'', 3:'20\'', 2:'30\''}
@@ -93,7 +94,7 @@ def commonSection(form, grid, irow):
     combo10w = QComboBox()
     for weather_resource in form.weather_resources_generic:
         combo10w.addItem(weather_resource)
-    combo10w.setFixedWidth(WDGT_SIZE_80)
+    combo10w.setFixedWidth(WDGT_SIZE_120)
     form.combo10w = combo10w
     grid.addWidget(combo10w, irow, 1)
 

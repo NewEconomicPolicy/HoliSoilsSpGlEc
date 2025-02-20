@@ -92,6 +92,9 @@ def read_config_file(form):
     form.combo08.setCurrentText(config[grp]['carbonVar'])
 
     weather_resource = config[grp]['weatherResource']
+    if weather_resource == '':
+        weather_resource = 'EFISCEN-ISIMIP'
+
     ave_weather = config[grp]['aveWthrFlag']
     form.bbox = config[grp]['bbox']
     form.combo10w.setCurrentText(weather_resource)
