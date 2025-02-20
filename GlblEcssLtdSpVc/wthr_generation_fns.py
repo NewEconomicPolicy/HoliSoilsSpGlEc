@@ -19,7 +19,7 @@ from PyQt5.QtWidgets import QApplication
 
 from getClimGenNC import ClimGenNC
 from getClimGenFns_ss import (fetch_WrldClim_data, open_wthr_NC_sets, get_wthr_nc_coords, join_hist_fut_to_sim_wthr)
-from glbl_ecsse_low_level_fns_sv import check_run_mask, update_wthr_progress, update_avemet_progress
+from glbl_ecsse_low_level_fns_sv import update_wthr_progress, update_avemet_progress
 from prepare_ecosse_low_level_ss import fetch_long_term_ave_wthr_recs, make_met_files
 # from make_site_spec_files_classes import MakeSiteFiles
 from hwsd_bil import HWSD_bil
@@ -58,7 +58,7 @@ def generate_all_weather(form):
     num_band = -999
 
     fut_wthr_set = form.weather_set_linkages['EFISCEN-ISIMIP'][1]
-    sim_end_year = form.wthr_sets[fut_wthr_set]['year_end']
+    sim_end_year = form.weather_sets[fut_wthr_set]['year_end']
 
     # generate weather dataset indices which enclose the AOI
     # ======================================================
@@ -87,7 +87,7 @@ def generate_all_weather(form):
 
         print('Getting historic weather data for band {}'.format(num_band))
         QApplication.processEvents()
-        #      ==============================
+        # ==========================
 
         pettmp_hist = climgen.fetch_cru_historic_NC_data(aoi_indices_hist, num_band)
         hist_wthr_dsets, fut_wthr_dsets = open_wthr_NC_sets(climgen)
@@ -135,7 +135,6 @@ def generate_all_weather(form):
     print('Finished weather generation - total number of sets written: {}'.format(ntotal_wrttn))
 
     return
-
 
 def make_avemet_file(clim_dir, lta_precip, lta_pet, lta_tmean):
     """
