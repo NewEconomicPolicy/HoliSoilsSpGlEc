@@ -17,12 +17,11 @@ from os.path import join, normpath, isdir, split
 from os import listdir, walk, makedirs
 from PyQt5.QtWidgets import QApplication
 
-from getClimGenNC import ClimGenNC
-from getClimGenFns_ss import (fetch_WrldClim_data, open_wthr_NC_sets, get_wthr_nc_coords, join_hist_fut_to_sim_wthr)
+from getClimGenNC_ltd import ClimGenNC
+from getClimGenFns_ss import (genLocalGrid, open_wthr_NC_sets, get_wthr_nc_coords, join_hist_fut_to_sim_wthr)
 from glbl_ecsse_low_level_fns_sv import update_wthr_progress, update_avemet_progress
 from prepare_ecosse_low_level_ss import fetch_long_term_ave_wthr_recs, make_met_files
 # from make_site_spec_files_classes import MakeSiteFiles
-from hwsd_bil import HWSD_bil
 from hwsd_soil_class import _gran_coords_from_lat_lon
 
 from thornthwaite import thornthwaite
@@ -31,7 +30,7 @@ ERROR_STR = '*** Error *** '
 WARNING_STR = '*** Warning *** '
 QUICK_FLAG = False       # forces break from loops after max cells reached in first GCM and SSP
 
-NGRANULARITY = 120
+GRANULARITY = 120
 NEXPCTD_MET_FILES = 302
 MAX_BANDS = 500000
 LTA_RECS_FN = 'lta_ave.txt'
@@ -57,14 +56,20 @@ def generate_all_weather(form):
     sim_strt_year = 1901
     num_band = -999
 
-    fut_wthr_set = form.weather_set_linkages['EFISCEN-ISIMIP'][1]
-    sim_end_year = form.weather_sets[fut_wthr_set]['year_end']
+    wthr_set_nm = form.weather_set_linkages['EFISCEN-ISIMIP'][1]
+    fut_wthr_set = form.weather_sets[wthr_set_nm]
+
+    wthr_set_nm = form.weather_set_linkages['EFISCEN-ISIMIP'][0]
+    hist_wthr_set = form.weather_sets[wthr_set_nm]
+
+    # sim_end_year = form.weather_sets[fut_wthr_set]['year_end']
 
     # generate weather dataset indices which enclose the AOI
     # ======================================================
     climgen = ClimGenNC(form)
-    hwsd = HWSD_bil(form.lgr, form.hwsd_dir)
-    aoi_indices_fut, aoi_indices_hist = climgen.genLocalGrid(bbox, hwsd)
+    aoi_indices_fut = genLocalGrid(fut_wthr_set, bbox)
+    aoi_indices_hist = genLocalGrid(hist_wthr_set, bbox)
+
     pettmp_fut = climgen.fetch_cru_future_NC_data(aoi_indices_fut, num_band)
 
     # for each GCM and SSP dataset group e.g. UKESM1-0-LL 585
@@ -278,7 +283,7 @@ def write_avemet_files(form):
 
                         gran_coord = split(drctry)[1]
                         gran_lat = int(gran_coord.split('_')[0])
-                        cell_lat = 90.0 - gran_lat / NGRANULARITY
+                        cell_lat = 90.0 - gran_lat / GRANULARITY
                         lta_pet = thornthwaite(lta_tmean, cell_lat)
 
                         make_avemet_file(drctry, lta_precip, lta_pet, lta_tmean)

@@ -12,11 +12,79 @@ __prog__ = 'getClimGenFns.py'
 __author__ = 's03mm5'
 
 from numpy.ma.core import MaskedConstant, MaskError
+from numpy import arange, seterr, ma
 from netCDF4 import Dataset
 from warnings import filterwarnings
+import math
+
+GRANULARITY = 120
 
 ERROR_STR = '*** Error *** '
 WARNING = '*** Warning *** '
+
+def genLocalGrid(wthr_set, bbox):
+    """
+    return the weather indices for the area which encloses the supplied bounding box
+    this function does not alter the ClimGenNC (self) object
+    """
+    # junk = seterr(all='ignore') # switch off warning messages
+
+    lats = wthr_set['latitudes']
+    num_lats = len(lats)
+    resol_lat = wthr_set['resol_lat']
+    lat_min = round(abs(num_lats * resol_lat) + wthr_set['lat_ll'], 8)
+
+    lons= wthr_set['longitudes']
+    num_lons = len(lons)
+    resol_lon = wthr_set['resol_lon']
+    lon_min = round(num_lons*resol_lon + wthr_set['lon_ll'], 8)
+
+    bbLonMin, bbLatMin, bbLonMax, bbLatMax = bbox
+
+    # determine bounds for climate grid which will enclose the supplied bounding box
+    # ==============================================================================
+    lat_indices = []
+    clim_lat_min = lat_min
+    num_lats = math.ceil(abs((bbLatMax - clim_lat_min) / resol_lat))
+    latMax = round(abs(num_lats * resol_lat) + clim_lat_min, 8)  # rounding introduced for NCAR_CCSM4
+    lat_indices.append(lats.index(latMax))
+
+    num_lats = int(abs((bbLatMin - clim_lat_min) / resol_lat))
+    latMin = round(abs(num_lats * resol_lat) + clim_lat_min, 8)  # rounding introduced for NCAR_CCSM4
+    lat_indices.append(lats.index(latMin))
+
+    # lons
+    # ==========
+    lon_indices = []
+    resol_lon = resol_lon
+    clim_lon_min = lon_min
+    num_lons = math.ceil((bbLonMax - clim_lon_min) / resol_lon)
+    lonMax = round(num_lons * resol_lon + clim_lon_min, 8)
+    lon_indices.append(lons.index(lonMax))
+
+    num_lons = int((bbLonMin - clim_lon_min) / resol_lon)
+    lonMin = round(num_lons * resol_lon + clim_lon_min, 8)
+    lon_indices.append(lons.index(lonMin))
+
+    # generate ClimGen grid    NB need to add one when slicing!!!
+    # =====================    ==================================
+    alons = arange(lonMin, lonMax, resol_lon)
+    alats = arange(latMin, latMax, resol_lat)
+
+    granlons = [(180.0 + lon)*GRANULARITY for lon in alons]
+    granlons.sort()
+
+    granlats = [(90.0 - lat)*GRANULARITY for lat in alats]
+    granlats.sort()
+
+    # must be in correct order
+    # ========================
+    lat_indices.sort()
+    lon_indices.sort()
+
+    aoi_indices = lat_indices + lon_indices
+
+    return aoi_indices
 
 def _apply_start_year_correction(sim_strt_yr, hist_dset_defn, pettmp):
     """

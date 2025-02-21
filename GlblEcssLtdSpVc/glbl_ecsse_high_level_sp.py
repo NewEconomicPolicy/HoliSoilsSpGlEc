@@ -21,7 +21,7 @@ from netCDF4 import Dataset
 from PyQt5.QtWidgets import QApplication
 
 import make_ltd_data_files
-import getClimGenNC
+from getClimGenNC_ltd import ClimGenNC
 import hwsd_bil
 
 from hwsd_mu_globals_fns import gen_grid_cells_for_band
@@ -290,12 +290,9 @@ def generate_banded_sims(form):
     del hwsd; del soil_recs
     lat_ur_aoi = form.hwsd_mu_globals.lat_ur_aoi
 
-    # create climate object
-    # =====================
-    climgen = getClimGenNC.ClimGenNC(form)
-
     # main banding loop
     # =================
+    climgen = ClimGenNC(form)   # create climate object
     lat_step = 0.5
     lat_ur = copy(lat_ur_lttr)
     nbands = int((lat_ur - lat_ll)/lat_step) + 1
