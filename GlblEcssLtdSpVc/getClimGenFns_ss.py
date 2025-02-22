@@ -48,25 +48,45 @@ def genLocalGrid(wthr_set, bbox):
     lon_aoi_ur = min(lon_max, lon_bb_max)
     lat_aoi_ur = min(lat_max, lat_bb_max)
 
-    # generate ClimGen grid    NB need to add one when slicing!!!
-    # =====================    ==================================
-    alons = arange(lon_aoi_ll, lon_aoi_ur, resol_lon)
-    alats = arange(lat_aoi_ll, lat_aoi_ur, resol_lat)
+    lat_ur_indx, lon_ur_indx = get_wthr_nc_coords(wthr_set, lat_aoi_ur, lon_aoi_ur)
+    lat_ll_indx, lon_ll_indx = get_wthr_nc_coords(wthr_set, lat_aoi_ll, lon_aoi_ll)
 
-    granlons = [(180.0 + lon)*GRANULARITY for lon in alons]
-    granlons.sort()
+    """
+    istep_lat = _coord_indices(lat_ll_indx,lat_ur_indx)
+    lat_indices = [indx for indx in range(lat_ll_indx, lat_ur_indx, istep_lat)]
 
-    granlats = [(90.0 - lat)*GRANULARITY for lat in alats]
-    granlats.sort()
+    istep_lon = _coord_indices(lon_ll_indx, lon_ur_indx)
+    lon_indices = [indx for indx in range(lon_ll_indx, lon_ur_indx, istep_lon)]
+    """
 
-    # must be in correct order
-    # ========================
-    lat_indices.sort()
-    lon_indices.sort()
+    lat_indx_min, lat_indx_max = _coord_order(lat_ll_indx,lat_ur_indx)
+    lon_indx_min, lon_indx_max = _coord_order(lon_ll_indx,lon_ur_indx)
 
-    aoi_indices = lat_indices + lon_indices
+    return (lat_indx_min, lat_indx_max, lon_indx_min, lon_indx_max)     # aoi_indices
 
-    return aoi_indices
+def _coord_order(ll_indx, ur_indx):
+    """
+    C
+    """
+    if ur_indx > ll_indx:
+        max_indx = ur_indx
+        min_indx = ll_indx
+    else:
+        max_indx = ll_indx
+        min_indx = ur_indx
+
+    return (min_indx, max_indx)
+
+def _coord_indices(ll_indx, ur_indx):
+    """
+    C
+    """
+    if ur_indx > ll_indx:
+        istep = 1
+    else:
+        istep = -1
+
+    return istep
 
 def _apply_start_year_correction(sim_strt_yr, hist_dset_defn, pettmp):
     """
