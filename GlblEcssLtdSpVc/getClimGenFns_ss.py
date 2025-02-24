@@ -22,34 +22,36 @@ GRANULARITY = 120
 ERROR_STR = '*** Error *** '
 WARNING = '*** Warning *** '
 
-def genLocalGrid(wthr_set, bbox):
+def fetch_wthr_dset_overlap(wthr_set1,wthr_set2):
+    """
+    return overlap of two weather sets
+    """
+    lon_ll = max(wthr_set1['lon_ll'], wthr_set2['lon_ll'])
+    lat_ll = max(wthr_set1['lat_ll'], wthr_set2['lat_ll'])
+    lon_ur = min(wthr_set1['lon_ur'], wthr_set2['lon_ur'])
+    lat_ur = min(wthr_set1['lat_ur'], wthr_set2['lat_ur'])
+
+    return (lon_ll, lat_ll, lon_ur, lat_ur)
+
+def genLocalGrid(wthr_set, bbox_wthr, bbox_aoi):
     """
     return the weather indices for the area which encloses the supplied bounding box
     this function does not alter the ClimGenNC (self) object
     """
     # junk = seterr(all='ignore') # switch off warning messages
 
-    lon_bb_min, lat_bb_min, lon_bb_max, lat_bb_max = bbox
-
-    lats = wthr_set['latitudes']
-    num_lats = len(lats)
-    resol_lat = wthr_set['resol_lat']
-        
-    lon_min, lat_min, lon_max, lat_max = wthr_set['lon_ll'], wthr_set['lat_ll'], wthr_set['lon_ur'], wthr_set['lat_ur']
-   
-    lons = wthr_set['longitudes']
-    num_lons = len(lons)
-    resol_lon = wthr_set['resol_lon']
+    lon_aoi_ll, lat_aoi_ll, lon_aoi_ur, lat_aoi_ur = bbox_aoi
+    lon_wthr_ll, lat_wthr_ll, lon_wthr_ur, lat_wthr_ur = bbox_wthr
 
     # determine bounds for climate grid which will enclose the greatest area of the bounding box 
     # ==========================================================================================
-    lon_aoi_ll = max(lon_min, lon_bb_min)
-    lat_aoi_ll = max(lat_min, lat_bb_min)
-    lon_aoi_ur = min(lon_max, lon_bb_max)
-    lat_aoi_ur = min(lat_max, lat_bb_max)
+    lon_ll = max(lon_wthr_ll, lon_aoi_ll)
+    lat_ll = max(lat_wthr_ll, lat_aoi_ll)
+    lon_ur = min(lon_wthr_ur, lon_aoi_ur)
+    lat_ur = min(lat_wthr_ur, lat_aoi_ur)
 
-    lat_ur_indx, lon_ur_indx = get_wthr_nc_coords(wthr_set, lat_aoi_ur, lon_aoi_ur)
-    lat_ll_indx, lon_ll_indx = get_wthr_nc_coords(wthr_set, lat_aoi_ll, lon_aoi_ll)
+    lat_ur_indx, lon_ur_indx = get_wthr_nc_coords(wthr_set, lat_ur, lon_ur)
+    lat_ll_indx, lon_ll_indx = get_wthr_nc_coords(wthr_set, lat_ll, lon_ll)
 
     """
     istep_lat = _coord_indices(lat_ll_indx,lat_ur_indx)

@@ -21,6 +21,7 @@ import math
 from numpy import arange, seterr, ma
 import warnings
 import csv
+from PyQt5.QtWidgets import QApplication
 
 from thornthwaite import thornthwaite
 
@@ -28,7 +29,7 @@ null_value = -9999
 set_spacer_len = 12
 
 numSecsDay = 3600*24
-ngranularity = 120
+GRANULARITY = 120
 weather_resource_permitted = list(['CRU', 'EObs', 'EWEMBI'])
 
 def _consistency_check(pettmp, varnams_mapped):
@@ -80,7 +81,7 @@ class ClimGenNC(object,):
         # determine user choices
         # ======================
         if hasattr(form, 'combo10w'):
-            weather_resource = form.combo10w.currentText()
+            wthr_rsrce = form.combo10w.currentText()
             fut_clim_scen = form.combo10.currentText()
             hist_start_year = int(form.combo09s.currentText())
             hist_end_year = int(form.combo09e.currentText())
@@ -88,7 +89,7 @@ class ClimGenNC(object,):
             sim_start_year = int(form.combo11s.currentText())   # might need these later
             sim_end_year = int(form.combo11e.currentText())
         else:
-            weather_resource = form.weather_resource
+            wthr_rsrce = form.weather_resource
             fut_clim_scen = form.scenario
             hist_start_year = form.hist_strt_year
             hist_end_year = form.hist_end_year
@@ -96,60 +97,64 @@ class ClimGenNC(object,):
             sim_start_year = form.sim_strt_year
             sim_end_year = form.sim_end_year
 
-        self.weather_resource = weather_resource
+        self.weather_resource = wthr_rsrce
 
         # African Monsoon Multidisciplinary Analysis (AMMA) 2050 datasets
         # ===============================================================
-        if weather_resource in form.amma_2050_allowed_gcms:
-            wthr_set_key = weather_resource + '_' + fut_clim_scen
+        if wthr_rsrce in form.amma_2050_allowed_gcms:
+            wthr_set_key = wthr_rsrce + '_' + fut_clim_scen
             if wthr_set_key not in form.weather_sets:
                 print('key {} not in weather sets in function {} - cannot continue'.format(wthr_set_key, func_name))
                 return
-            hist_weather_set = form.weather_sets[weather_resource + '_historical']
-            fut_weather_set = form.weather_sets[wthr_set_key]
+            hist_wthr_set = form.weather_sets[wthr_rsrce + '_historical']
+            fut_wthr_set = form.weather_sets[wthr_set_key]
             lat = 'lat'
             lon = 'lon'
-        elif weather_resource == 'HARMONIE':
-            hist_weather_set = form.weather_sets['HARMONIE_V2']
-            fut_weather_set = form.weather_sets['HARMONIE_V2']
+        elif wthr_rsrce== 'HARMONIE':
+            hist_wthr_set = form.weather_sets['HARMONIE_V2']
+            fut_wthr_set = form.weather_sets['HARMONIE_V2']
             lat = 'lat'
             lon = 'lon'
-        elif weather_resource == 'EObs':
-            hist_weather_set = form.weather_sets['EObs_Mnth']
-            fut_weather_set = form.weather_sets['EObs_Mnth']
+        elif wthr_rsrce == 'EObs':
+            hist_wthr_set = form.weather_sets['EObs_Mnth']
+            fut_wthr_set = form.weather_sets['EObs_Mnth']
             lat = 'latitude'
             lon = 'longitude'
-        elif weather_resource == 'CRU':
+        elif wthr_rsrce == 'CRU':
             wthr_set_key = 'ClimGen_' + fut_clim_scen
             if wthr_set_key not in form.weather_sets:
                 print('key {} not in weather sets in function {} - cannot continue'.format(wthr_set_key, func_name))
                 return
-            hist_weather_set = form.weather_sets['CRU_hist']
-            fut_weather_set = form.weather_sets[wthr_set_key]
+            hist_wthr_set = form.weather_sets['CRU_hist']
+            fut_wthr_set = form.weather_sets[wthr_set_key]
             lat = 'latitude'
             lon = 'longitude'
-        elif weather_resource == 'EFISCEN-ISIMIP':
+        elif wthr_rsrce == 'EFISCEN-ISIMIP':
             wthr_set_key = 'EFISCEN-ISIMIP_' + fut_clim_scen
             if wthr_set_key not in form.weather_sets:
                 print('key {} not in weather sets in function {} - cannot continue'.format(wthr_set_key, func_name))
                 return
-            hist_weather_set = form.weather_sets['CRU_hist']
-            fut_weather_set = form.weather_sets[wthr_set_key]
+            hist_wthr_set = form.weather_sets['CRU_hist']
+            fut_wthr_set = form.weather_sets[wthr_set_key]
             lat = 'lat'
             lon = 'lon'
-        elif weather_resource == 'NCAR_CCSM4':
-            hist_weather_set = form.weather_sets['NCAR_CCSM4']
-            fut_weather_set = form.weather_sets['NCAR_CCSM4']
+        elif wthr_rsrce == 'NCAR_CCSM4':
+            hist_wthr_set = form.weather_sets['NCAR_CCSM4']
+            fut_wthr_set = form.weather_sets['NCAR_CCSM4']
             lat = 'lat'
             lon = 'lon'
         else:
-            print('weather resource ' + weather_resource + ' not recognised in ' + func_name + ' - cannot continue')
+            print('weather resource ' + wthr_rsrce + ' not recognised in ' + func_name + ' - cannot continue')
             return
+
+        # ===============================================================
+        self.fut_wthr_set_defn = fut_wthr_set
+        self.hist_wthr_set_defn = hist_wthr_set
 
         # make sure start and end years are within dataset limits
         # =======================================================
-        hist_start_year = max(hist_weather_set['year_start'], hist_start_year)
-        hist_end_year = min(hist_weather_set['year_end'], hist_end_year)
+        hist_start_year = max(hist_wthr_set['year_start'], hist_start_year)
+        hist_end_year = min(hist_wthr_set['year_end'], hist_end_year)
 
         self.ave_weather_flag = ave_weather_flag
         num_hist_years = hist_end_year - hist_start_year + 1
@@ -161,28 +166,28 @@ class ClimGenNC(object,):
 
         # future data
         # ===========
-        self.fut_precip_fname = fut_weather_set['ds_precip']
-        self.fut_tas_fname = fut_weather_set['ds_tas']
-        self.resol_fut_lon = fut_weather_set['resol_lon']
-        self.resol_fut_lat = fut_weather_set['resol_lat']
+        self.fut_precip_fname = fut_wthr_set['ds_precip']
+        self.fut_tas_fname = fut_wthr_set['ds_tas']
+        self.resol_fut_lon = fut_wthr_set['resol_lon']
+        self.resol_fut_lat = fut_wthr_set['resol_lat']
 
         # granularity
         # ===========
         self.lon = lon
         self.lat = lat
-        self.lon_min = fut_weather_set['lon_ll']
-        self.lat_min = fut_weather_set['lat_ll']
-        self.longitudes = fut_weather_set['longitudes']
-        self.latitudes =  fut_weather_set['latitudes']
+        self.lon_min = fut_wthr_set['lon_ll']
+        self.lat_min = fut_wthr_set['lat_ll']
+        self.longitudes = fut_wthr_set['longitudes']
+        self.latitudes =  fut_wthr_set['latitudes']
         self.pettmp = {}        # dictionary whose keys will reference the climate grid, pt_grid
         self.lgr = form.lgr
 
         # past (monthly) data
         # ===================
-        self.hist_precip_fname = hist_weather_set['ds_precip']
-        self.hist_tas_fname = hist_weather_set['ds_tas']
-        self.longitudes_hist = hist_weather_set['longitudes']
-        self.latitudes_hist = hist_weather_set['latitudes']
+        self.hist_precip_fname = hist_wthr_set['ds_precip']
+        self.hist_tas_fname = hist_wthr_set['ds_tas']
+        self.longitudes_hist = hist_wthr_set['longitudes']
+        self.latitudes_hist = hist_wthr_set['latitudes']
 
         # New stanza to facilitate option when user selects "use average weather"
         # =======================================================================
@@ -194,7 +199,7 @@ class ClimGenNC(object,):
         self.num_ave_wthr_years = num_hist_years    # only years when there is historic data will be taken into account
 
         self.sim_start_year = sim_start_year
-        self.sim_end_year   = sim_end_year
+        self.sim_end_year = sim_end_year
         self.num_fut_years = sim_end_year - sim_start_year + 1
         self.fut_ave_file = 'met{}_to_{}_ave.txt'.format(sim_start_year, sim_end_year)
 
@@ -266,6 +271,70 @@ class ClimGenNC(object,):
         aoi_indices_hist = lat_indices_hist + lon_indices
         return aoi_indices_fut, aoi_indices_hist
 
+    def fetch_isimap_NC_data(self, aoi_indices, fut_start_indx = 0):
+        """
+        get precipitation or temperature data for a given variable and lat/long index for all times
+        """
+        # warnings.simplefilter('default')
+
+        num_key_masked = 0
+        lat_indx_min, lat_indx_max, lon_indx_min, lon_indx_max = aoi_indices
+        pettmp = {}
+
+        # process future climate
+        # ======================
+        varnams_mapped = {'pr':'precipitation','tas':'temperature'}
+
+        varnams = sorted(varnams_mapped.keys())
+
+        for varname, fname in zip(varnams, list([self.fut_precip_fname, self.fut_tas_fname])):
+            varnam_map = varnams_mapped[varname]
+            pettmp[varnam_map] = {}
+            ncfile = Dataset(fname, mode='r')
+
+            # collect readings for all time values
+            # ====================================
+            slice = ncfile.variables[varname][:, lat_indx_min:lat_indx_max, lon_indx_min:lon_indx_max]
+
+            if ma.is_masked(slice):
+                slice_is_masked_flag = True
+                self.lgr.info('Future slice is masked')
+            else:
+                slice_is_masked_flag = False
+
+            # reform slice
+            # ============
+            for ilat, lat_indx in enumerate(range(lat_indx_min, lat_indx_max)):
+                gran_lat = round((90.0 - self.latitudes[lat_indx])*GRANULARITY)
+
+                for ilon, lon_indx in enumerate(range(lon_indx_min, lon_indx_max)):
+                    gran_lon = round((180.0 + self.longitudes[lon_indx])*GRANULARITY)
+                    key = '{:0=5d}_{:0=5d}'.format(int(gran_lat), int(gran_lon))
+
+                    # validate values
+                    # ===============
+                    pettmp[varnam_map][key] = null_value
+                    if slice_is_masked_flag :
+                        val = slice[ilat,ilon,0]
+                        if val is ma.masked:
+                            self.lgr.info('val is ma.masked for key ' + key)
+                            pettmp[varnam_map][key] = None
+                            num_key_masked += 1
+
+                    # add data for this coordinate
+                    # ============================
+                    if pettmp[varnam_map][key] == null_value:
+                        # remove overlap with historic data - for CRU data only
+                        record = [round(val, 1) for val in slice[:, ilat,ilon]]
+                        pettmp[varnam_map][key] = record[fut_start_indx:]
+
+            # close netCDF file
+            ncfile.close()
+            if num_key_masked > 0:
+                print('# masked weather keys: {}'.format(num_key_masked))
+
+        return pettmp
+
     def fetch_ewembi_NC_data(self, aoi_indices, num_band, future_flag = True):
         """
         get precipitation or temperature data for a given variable and lat/long index for all times
@@ -319,10 +388,10 @@ class ClimGenNC(object,):
             # reform slice
             # ============
             for ilat, lat_indx in enumerate(range(lat_indx_min, lat_indx_max + 1)):
-                gran_lat = round((90.0 - self.latitudes[lat_indx])*ngranularity)
+                gran_lat = round((90.0 - self.latitudes[lat_indx])*GRANULARITY)
 
                 for ilon, lon_indx in enumerate(range(lon_indx_min, lon_indx_max + 1)):
-                    gran_lon = round((180.0 + self.longitudes[lon_indx])*ngranularity)
+                    gran_lon = round((180.0 + self.longitudes[lon_indx])*GRANULARITY)
                     key = '{:0=5d}_{:0=5d}'.format(int(gran_lat), int(gran_lon))
 
                     # validate values
@@ -401,11 +470,11 @@ class ClimGenNC(object,):
             # ============
             for ilat, lat_indx in enumerate(range(lat_indx_min, lat_indx_max + 1)):
                 lat = self.latitudes[lat_indx]
-                gran_lat = round((90.0 - lat)*ngranularity)
+                gran_lat = round((90.0 - lat)*GRANULARITY)
 
                 for ilon, lon_indx in enumerate(range(lon_indx_min, lon_indx_max + 1)):
                     long = self.longitudes[lon_indx]
-                    gran_lon = round((180.0 + long)*ngranularity)
+                    gran_lon = round((180.0 + long)*GRANULARITY)
                     key = '{:0=5d}_{:0=5d}'.format(int(gran_lat), int(gran_lon))
 
                     # validate values
@@ -483,10 +552,10 @@ class ClimGenNC(object,):
             # reform slice
             # ============
             for ilat, lat_indx in enumerate(range(lat_indx_min, lat_indx_max + 1)):
-                gran_lat = round((90.0 - self.latitudes[lat_indx])*ngranularity)
+                gran_lat = round((90.0 - self.latitudes[lat_indx])*GRANULARITY)
 
                 for ilon, lon_indx in enumerate(range(lon_indx_min, lon_indx_max + 1)):
-                    gran_lon = round((180.0 + self.longitudes[lon_indx])*ngranularity)
+                    gran_lon = round((180.0 + self.longitudes[lon_indx])*GRANULARITY)
                     key = '{:0=5d}_{:0=5d}'.format(int(gran_lat), int(gran_lon))
 
                     # validate values
@@ -565,10 +634,10 @@ class ClimGenNC(object,):
             # reform slice
             # ============
             for ilat, lat_indx in enumerate(range(lat_indx_min, lat_indx_max + 1)):
-                gran_lat = round((90.0 - self.latitudes[lat_indx])*ngranularity)
+                gran_lat = round((90.0 - self.latitudes[lat_indx])*GRANULARITY)
 
                 for ilon, lon_indx in enumerate(range(lon_indx_min, lon_indx_max + 1)):
-                    gran_lon = round((180.0 + self.longitudes[lon_indx])*ngranularity)
+                    gran_lon = round((180.0 + self.longitudes[lon_indx])*GRANULARITY)
                     key = '{:0=5d}_{:0=5d}'.format(int(gran_lat), int(gran_lon))
 
                     # validate values
@@ -629,10 +698,10 @@ class ClimGenNC(object,):
             # reform slice
             # ============
             for ilat, lat_indx in enumerate(range(lat_indx_min, lat_indx_max + 1)):
-                gran_lat = round((90.0 - self.latitudes[lat_indx])*ngranularity)
+                gran_lat = round((90.0 - self.latitudes[lat_indx])*GRANULARITY)
 
                 for ilon, lon_indx in enumerate(range(lon_indx_min, lon_indx_max + 1)):
-                    gran_lon = round((180.0 + self.longitudes[lon_indx])*ngranularity)
+                    gran_lon = round((180.0 + self.longitudes[lon_indx])*GRANULARITY)
                     key = '{:0=5d}_{:0=5d}'.format(int(gran_lat), int(gran_lon))
 
                     # validate values
@@ -685,7 +754,7 @@ class ClimGenNC(object,):
             # collect readings for all time values
             # ====================================
 
-            slice = ncfile.variables[varname][:, lat_indx_min:lat_indx_max + 1, lon_indx_min:lon_indx_max + 1]
+            slice = ncfile.variables[varname][:, lat_indx_min:lat_indx_max, lon_indx_min:lon_indx_max]
 
             if ma.is_masked(slice):
                 slice_is_masked_flag = True
@@ -695,11 +764,14 @@ class ClimGenNC(object,):
 
             # reform slice
             # ============
-            for ilat, lat_indx in enumerate(range(lat_indx_min, lat_indx_max + 1)):
-                gran_lat = round((90.0 - self.latitudes_hist[lat_indx])*ngranularity)
+            for ilat, lat_indx in enumerate(range(lat_indx_min, lat_indx_max)):
+                gran_lat = round((90.0 - self.latitudes_hist[lat_indx])*GRANULARITY)
 
-                for ilon, lon_indx in enumerate(range(lon_indx_min, lon_indx_max + 1)):
-                    gran_lon = round((180.0 + self.longitudes[lon_indx])*ngranularity)
+                print('lat index: {}'.format(lat_indx))
+                QApplication.processEvents()
+
+                for ilon, lon_indx in enumerate(range(lon_indx_min, lon_indx_max)):
+                    gran_lon = round((180.0 + self.longitudes_hist[lon_indx])*GRANULARITY)
                     key = '{:0=5d}_{:0=5d}'.format(int(gran_lat), int(gran_lon))
 
                     # validate values

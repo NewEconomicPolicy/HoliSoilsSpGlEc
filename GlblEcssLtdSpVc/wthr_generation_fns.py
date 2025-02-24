@@ -18,7 +18,7 @@ from os import listdir, walk, makedirs
 from PyQt5.QtWidgets import QApplication
 
 from getClimGenNC_ltd import ClimGenNC
-from getClimGenFns_ss import (genLocalGrid, open_wthr_NC_sets, get_wthr_nc_coords, join_hist_fut_to_sim_wthr)
+from getClimGenFns_ss import (genLocalGrid, open_wthr_NC_sets, fetch_wthr_dset_overlap, join_hist_fut_to_sim_wthr)
 from glbl_ecsse_low_level_fns_sv import update_wthr_progress, update_avemet_progress
 from prepare_ecosse_low_level_ss import fetch_long_term_ave_wthr_recs, make_met_files
 # from make_site_spec_files_classes import MakeSiteFiles
@@ -45,7 +45,7 @@ def generate_all_weather(form):
     lon_ll_aoi = form.hwsd_mu_globals.lon_ll_aoi
     lat_ur_aoi = form.hwsd_mu_globals.lat_ur_aoi
     lon_ur_aoi = form.hwsd_mu_globals.lon_ur_aoi
-    bbox = list([lon_ll_aoi, lat_ll_aoi, lon_ur_aoi, lat_ur_aoi])
+    bbox_aoi = list([lon_ll_aoi, lat_ll_aoi, lon_ur_aoi, lat_ur_aoi])
 
     max_cells = int(form.w_max_sims.text())
 
@@ -54,7 +54,6 @@ def generate_all_weather(form):
 
     sims_dir = form.sims_dir
     sim_strt_year = 1901
-    num_band = -999
 
     wthr_set_nm = form.weather_set_linkages['EFISCEN-ISIMIP'][1]
     fut_wthr_set = form.weather_sets[wthr_set_nm]
@@ -67,10 +66,10 @@ def generate_all_weather(form):
     # generate weather dataset indices which enclose the AOI
     # ======================================================
     climgen = ClimGenNC(form)
-    aoi_indices_fut = genLocalGrid(fut_wthr_set, bbox)
-    aoi_indices_hist = genLocalGrid(hist_wthr_set, bbox)
-
-    pettmp_fut = climgen.fetch_cru_future_NC_data(aoi_indices_fut, num_band)
+    bbox_wthr = fetch_wthr_dset_overlap(hist_wthr_set, fut_wthr_set)
+    bbox_wthr = (12.0, 47.0, 13.0, 48.0)
+    aoi_indices_fut = genLocalGrid(fut_wthr_set, bbox_wthr, bbox_aoi)
+    aoi_indices_hist = genLocalGrid(hist_wthr_set, bbox_wthr, bbox_aoi)
 
     # for each GCM and SSP dataset group e.g. UKESM1-0-LL 585
     # =======================================================
@@ -80,22 +79,17 @@ def generate_all_weather(form):
     for wthr_set in form.weather_set_linkages['EFISCEN-ISIMIP']:
         this_gcm, scnr = wthr_set.split('_')
         if scnr == 'hist':
-            continue
+            print('Getting historic weather data from weather set: ' + hist_wthr_set['ds_precip'])
+            QApplication.processEvents()
 
-        print('\nProcessing weather set: ' + this_gcm + '\tScenario: ' + scnr)
+            pettmp_hist = climgen.fetch_cru_historic_NC_data(aoi_indices_hist, num_band=-999)
 
-        print('Getting future weather data for band {}'.format(num_band))
+        print('\nGetting future data from weather set: ' + this_gcm + '\tScenario: ' + scnr)
         QApplication.processEvents()
         #      =============================
 
-        pettmp_fut = climgen.fetch_cru_future_NC_data(aoi_indices_fut, num_band)
-
-        print('Getting historic weather data for band {}'.format(num_band))
-        QApplication.processEvents()
-        # ==========================
-
-        pettmp_hist = climgen.fetch_cru_historic_NC_data(aoi_indices_hist, num_band)
-        hist_wthr_dsets, fut_wthr_dsets = open_wthr_NC_sets(climgen)
+        pettmp_fut = climgen.fetch_isimap_NC_data(aoi_indices_fut)
+        # pettmp_fut = -999
 
         if pettmp_fut is None or pettmp_hist is None:
             pettmp_sim = None
@@ -128,10 +122,11 @@ def generate_all_weather(form):
 
         # close NC files
         # ==============
+        """
         for metric in list(['precip', 'tas']):
             hist_wthr_dsets[metric].close()
             fut_wthr_dsets[metric].close()
-
+        """
         if QUICK_FLAG:
             break
 
