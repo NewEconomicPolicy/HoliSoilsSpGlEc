@@ -1,12 +1,12 @@
-#-------------------------------------------------------------------------------
+# -------------------------------------------------------------------------------
 # Name:        getClimGenNC.py
 # Purpose:     read netCDF files comprising ClimGen data
 # Author:      s03mm5
 # Created:     08/12/2015
 # Copyright:   (c) s03mm5 2015
 # Licence:     <your licence>
-#-------------------------------------------------------------------------------
-#!/usr/bin/env python
+# -------------------------------------------------------------------------------
+#
 
 __prog__ = 'getClimGenNC.py'
 __author__ = 's03mm5'
@@ -351,23 +351,23 @@ class ClimGenNC(object,):
         lat_indx_min, lat_indx_max, lon_indx_min, lon_indx_max = aoi_indices
         pettmp = {}
 
-        weather_resource =  self.weather_resource
+        weather_resource = self.weather_resource
         if future_flag:
             precip_fname = self.fut_precip_fname
-            tas_fname    = self.fut_tas_fname
-            start_year   = self.sim_start_year
+            tas_fname = self.fut_tas_fname
+            start_year = self.sim_start_year
         else:
             precip_fname = self.hist_precip_fname
-            tas_fname    = self.hist_tas_fname
-            start_year   = self.hist_start_year
+            tas_fname = self.hist_tas_fname
+            start_year = self.hist_start_year
 
-        varnams_mapped = {'pr':'precipitation','tas':'temperature'}
+        varnams_mapped = {'pr': 'precipitation', 'tas': 'temperature'}
         varnams = sorted(varnams_mapped.keys())
 
         for varname, fname in zip(varnams, list([precip_fname, tas_fname])):
             varnam_map = varnams_mapped[varname]
             pettmp[varnam_map] = {}
-            ncfile = Dataset(fname, mode='r')
+            ncfile = Dataset(fname)
 
             # collect readings for all time values
             # ====================================
@@ -666,12 +666,11 @@ class ClimGenNC(object,):
 
         return pettmp
 
-    def fetch_cru_future_NC_data(self, aoi_indices, num_band, fut_start_indx = 0):
+    def fetch_cru_future_NC_data(self, aoi_indices, num_band, fut_start_indx=0):
         """
         get precipitation or temperature data for a given variable and lat/long index for all times
         CRU uses NETCDF4 format
         """
-        func_name = __prog__ +  ' fetch_fut_future_NC_data'
         warnings.simplefilter('default')
 
         num_key_masked = 0
@@ -687,7 +686,7 @@ class ClimGenNC(object,):
         for varname, fname in zip(varnams, list([self.fut_precip_fname, self.fut_tas_fname])):
             varnam_map = varnams_mapped[varname]
             pettmp[varnam_map] = {}
-            ncfile = Dataset(fname, mode='r')
+            ncfile = Dataset(fname)
 
             # collect readings for all time values
             # ====================================
@@ -737,7 +736,6 @@ class ClimGenNC(object,):
         get precipitation or temperature data for a given variable and lat/long index for all times
         CRU uses NETCDF4 format
         """
-        func_name = __prog__ +  ' fetch_historic_NC_data'
         warnings.simplefilter('default')
 
         num_key_masked = 0
@@ -753,7 +751,7 @@ class ClimGenNC(object,):
         for varname, fname in zip(varnams, list([self.hist_precip_fname, self.hist_tas_fname])):
             varnam_map = varnams_mapped[varname]
             pettmp[varnam_map] = {}
-            ncfile = Dataset(fname, mode='r')
+            ncfile = Dataset(fname)
 
             # collect readings for all time values
             # ====================================

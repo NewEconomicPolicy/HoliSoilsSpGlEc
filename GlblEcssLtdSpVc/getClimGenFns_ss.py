@@ -64,7 +64,7 @@ def genLocalGrid(wthr_set, bbox_wthr, bbox_aoi):
     lat_indx_min, lat_indx_max = _coord_order(lat_ll_indx,lat_ur_indx)
     lon_indx_min, lon_indx_max = _coord_order(lon_ll_indx,lon_ur_indx)
 
-    return (lat_indx_min, lat_indx_max, lon_indx_min, lon_indx_max)     # aoi_indices
+    return lat_indx_min, lat_indx_max, lon_indx_min, lon_indx_max  # aoi_indices
 
 def _coord_order(ll_indx, ur_indx):
     """
