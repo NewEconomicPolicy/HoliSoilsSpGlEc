@@ -210,47 +210,50 @@ class ClimGenNC(object,):
         """
         # junk = seterr(all='ignore') # switch off warning messages
 
-        bbLonMin, bbLatMin, bbLonMax, bbLatMax =  bbox
+        bb_lon_min, bb_lat_min, bb_lon_max, bb_lat_max =  bbox
         if snglPntFlag:
-            bbLonMax = bbLonMin
-            bbLatMax = bbLatMin
+            bb_lon_max = bb_lon_min
+            bb_lat_max = bb_lat_min
 
         # determine bounds for climate grid which will enclose the supplied bounding box
         # ==============================================================================
         resol_fut_lat = self.resol_fut_lat   # negative for future CRU data
-        lat_indices = []
+        lat_indices_fut = []
         lat_indices_hist = []
         clim_lat_min = self.lat_min
-        num_lats = math.ceil( abs((bbLatMax - clim_lat_min)/resol_fut_lat) )
-        latMax = round(abs(num_lats*resol_fut_lat) + clim_lat_min, 8)   # rounding introduced for NCAR_CCSM4
-        lat_indices.append(self.latitudes.index(latMax))
-        lat_indices_hist.append(self.latitudes_hist.index(latMax))
+        num_lats = math.ceil( abs((bb_lat_max - clim_lat_min)/resol_fut_lat) )
+        lat_max = round(abs(num_lats*resol_fut_lat) + clim_lat_min, 8)   # rounding introduced for NCAR_CCSM4
+        lat_indices_fut.append(self.latitudes.index(lat_max))
+        lat_indices_hist.append(self.latitudes_hist.index(lat_max))
 
-        num_lats = int( abs((bbLatMin - clim_lat_min)/resol_fut_lat) )
-        latMin = round(abs(num_lats*resol_fut_lat) + clim_lat_min, 8)   # rounding introduced for NCAR_CCSM4
-        lat_indices.append(self.latitudes.index(latMin))
-        lat_indices_hist.append(self.latitudes_hist.index(latMin))
+        num_lats = int( abs((bb_lat_min - clim_lat_min)/resol_fut_lat) )
+        lat_min = round(abs(num_lats*resol_fut_lat) + clim_lat_min, 8)   # rounding introduced for NCAR_CCSM4
+        lat_indices_fut.append(self.latitudes.index(lat_min))
+        lat_indices_hist.append(self.latitudes_hist.index(lat_min))
 
         # longitudes
         # ==========
-        lon_indices = []
+        lon_indices_fut = []
+        lon_indices_hist = []
         resol_fut_lon = self.resol_fut_lon
         clim_lon_min = self.lon_min
-        num_lons = math.ceil((bbLonMax - clim_lon_min)/resol_fut_lon)
-        lonMax = round(num_lons*resol_fut_lon + clim_lon_min, 8)
-        lon_indices.append(self.longitudes.index(lonMax))
+        num_lons = math.ceil((bb_lon_max - clim_lon_min)/resol_fut_lon)
+        lon_max = round(num_lons*resol_fut_lon + clim_lon_min, 8)
+        lon_indices_fut.append(self.longitudes.index(lon_max))
+        lon_indices_hist.append(self.longitudes_hist.index(lon_max))
 
-        num_lons = int((bbLonMin - clim_lon_min)/resol_fut_lon)
-        lonMin = round(num_lons*resol_fut_lon + clim_lon_min, 8)
-        lon_indices.append(self.longitudes.index(lonMin))
-
+        num_lons = int((bb_lon_min - clim_lon_min)/resol_fut_lon)
+        lon_min = round(num_lons*resol_fut_lon + clim_lon_min, 8)
+        lon_indices_fut.append(self.longitudes.index(lon_min))
+        lon_indices_hist.append(self.longitudes_hist.index(lon_min))
+        """
         # generate ClimGen grid    NB need to add one when slicing!!!
         # =====================    ==================================
-        alons = arange(lonMin, lonMax, resol_fut_lon)
-        alats = arange(latMin, latMax, resol_fut_lat)
+        alons = arange(lon_min, lon_max, resol_fut_lon)
+        alats = arange(lat_min, lat_max, resol_fut_lat)
         nlats = len(alats)
         nlons = len(alons)
-
+        
         granlons = arange(nlons)
         for ic, lon in enumerate(alons):
             granlons[ic] = (180.0 + lon)*hwsd.granularity
@@ -260,15 +263,16 @@ class ClimGenNC(object,):
         for ic, lat in enumerate(alats):
             granlats[ic] = (90.0 - lat)*hwsd.granularity
         granlats.sort()
-
+        """
         # must be in correct order
         # ========================
-        lat_indices.sort()
         lat_indices_hist.sort()
-        lon_indices.sort()
+        lon_indices_hist.sort()
+        lat_indices_fut.sort()
+        lon_indices_fut.sort()
 
-        aoi_indices_fut = lat_indices + lon_indices
-        aoi_indices_hist = lat_indices_hist + lon_indices
+        aoi_indices_fut = lat_indices_fut + lon_indices_fut
+        aoi_indices_hist = lat_indices_hist + lon_indices_hist
         return aoi_indices_fut, aoi_indices_hist
 
     def fetch_isimap_NC_data(self, aoi_indices, fut_start_indx = 0):

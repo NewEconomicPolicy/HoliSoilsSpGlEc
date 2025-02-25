@@ -22,13 +22,14 @@ from PyQt5.QtWidgets import QApplication
 
 import make_ltd_data_files
 from getClimGenNC_ltd import ClimGenNC
+
+from getClimGenFns import associate_climate
 import hwsd_bil
 
 from hwsd_mu_globals_fns import gen_grid_cells_for_band
 from litter_and_orchidee_fns import resize_yrs_pi
 from prepare_ecosse_files import update_progress, make_ecosse_file
 from glbl_ecss_cmmn_cmpntsGUI import calculate_grid_cell
-from getClimGenFns import check_clim_nc_limits, associate_climate
 from mngmnt_fns_and_class import ManagementSet, check_mask_location, get_hilda_land_uses
 
 WARN_STR = '*** Warning *** '
@@ -104,6 +105,8 @@ def _generate_ecosse_files(form, climgen, mask_defn, num_band):
 
     if wthr_rsrc == 'EObs':
         pettmp_fut = climgen.fetch_eobs_NC_data(aoi_indices_fut, num_band)
+    elif wthr_rsrc == 'EFISCEN-ISIMIP':
+        pettmp_fut = climgen.fetch_isimap_NC_data(aoi_indices_fut, num_band)
     else:
         pettmp_fut = climgen.fetch_cru_future_NC_data(aoi_indices_fut, num_band)
 
@@ -114,6 +117,9 @@ def _generate_ecosse_files(form, climgen, mask_defn, num_band):
         pettmp_hist = climgen.fetch_eobs_NC_data(aoi_indices_fut, num_band, future_flag = False)
     else:
         pettmp_hist = climgen.fetch_cru_historic_NC_data(aoi_indices_hist, num_band)
+
+    keys_hist = list(pettmp_hist['precipitation'].keys())
+    keys_fut = list(pettmp_fut['precipitation'].keys())
 
     print('Creating simulation files for band {}...'.format(num_band))
     QApplication.processEvents()
@@ -247,15 +253,6 @@ def generate_banded_sims(form):
     # weather choice
     # ==============
     weather_resource = form.combo10w.currentText()
-
-    # check requested AOI coordinates against extent of the weather resource dataset
-    # ==============================================================================
-    if check_clim_nc_limits(form, weather_resource):
-        print('Selected ' + weather_resource)
-        form.historic_weather_flag = weather_resource
-        form.future_climate_flag   = weather_resource
-    else:
-        return
 
     # mask
     # ====
