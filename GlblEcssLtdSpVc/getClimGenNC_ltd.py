@@ -275,7 +275,7 @@ class ClimGenNC(object,):
         aoi_indices_hist = lat_indices_hist + lon_indices_hist
         return aoi_indices_fut, aoi_indices_hist
 
-    def fetch_isimap_NC_data(self, aoi_indices, fut_start_indx = 0):
+    def fetch_isimap_NC_data(self, aoi_indices, fut_start_indx=0):
         """
         get precipitation or temperature data for a given variable and lat/long index for all times
         """
@@ -803,7 +803,7 @@ class ClimGenNC(object,):
         be included in the input.txt file
         also create a climate file for each of the simulation years based on average weather from the CRU year range
         """
-        func_name =  ' create_FutureAverages'
+        func_name = ' create_FutureAverages'
         full_func_name =  __prog__ +  func_name
 
         sim_start_year = self.sim_start_year

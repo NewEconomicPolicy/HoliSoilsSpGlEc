@@ -261,24 +261,26 @@ def resize_yrs_pi(sim_strt_yr, sim_end_yr, yrs_pi):
     yr_frst = yrs_pi['yrs'][0]
     yr_last = yrs_pi['yrs'][-1]
 
-    # trap error
-    # ==========
-    if sim_strt_yr < yr_frst:
-        sim_strt_yr = yr_frst
-
-    sim_yrs = list(range(sim_strt_yr, sim_end_yr + 1))
-
     pi_frst = yrs_pi['pis'][0]
     pi_last = yrs_pi['pis'][-1]
 
-    sim_pis = []
-    for iyr, yr in enumerate(sim_yrs):
-        if yr < yr_frst:
-            sim_pis.append(pi_frst)
-        elif yr > yr_last:
-            sim_pis.append(pi_last)
-        else:
-            sim_pis.append(yrs_pi['pis'][iyr])
+    # trap error
+    # ==========
+    frst_yrs = []
+    frst_pis = []
+    if sim_strt_yr < yr_frst:
+        frst_yrs = list(range(sim_strt_yr, yr_frst))
+        frst_pis = [pi_frst for yr in range(sim_strt_yr, yr_frst)]
+
+    last_yrs = []
+    last_pis = []
+
+    if sim_end_yr > yr_last:
+        last_yrs = list(range(yr_last + 1, sim_end_yr))
+        last_pis = [pi_last for yr in range(yr_last + 1, sim_end_yr)]
+
+    sim_yrs = frst_yrs + yrs_pi['yrs'] + last_yrs
+    sim_pis = frst_pis + yrs_pi['pis'] + last_pis
 
     new_yrs_pi = {'yrs': sim_yrs, 'pis': sim_pis}
 

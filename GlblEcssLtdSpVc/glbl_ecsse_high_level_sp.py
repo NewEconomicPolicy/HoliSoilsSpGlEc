@@ -106,7 +106,7 @@ def _generate_ecosse_files(form, climgen, mask_defn, num_band):
     if wthr_rsrc == 'EObs':
         pettmp_fut = climgen.fetch_eobs_NC_data(aoi_indices_fut, num_band)
     elif wthr_rsrc == 'EFISCEN-ISIMIP':
-        pettmp_fut = climgen.fetch_isimap_NC_data(aoi_indices_fut, num_band)
+        pettmp_fut = climgen.fetch_isimap_NC_data(aoi_indices_fut)
     else:
         pettmp_fut = climgen.fetch_cru_future_NC_data(aoi_indices_fut, num_band)
 
