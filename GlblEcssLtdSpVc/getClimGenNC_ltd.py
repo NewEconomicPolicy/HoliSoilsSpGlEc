@@ -298,7 +298,7 @@ class ClimGenNC(object,):
 
             # collect readings for all time values
             # ====================================
-            slice = ncfile.variables[varname][:, lat_indx_min:lat_indx_max, lon_indx_min:lon_indx_max]
+            slice = ncfile.variables[varname][:, lat_indx_min:lat_indx_max + 1, lon_indx_min:lon_indx_max + 1]
 
             if ma.is_masked(slice):
                 slice_is_masked_flag = True
@@ -308,10 +308,10 @@ class ClimGenNC(object,):
 
             # reform slice
             # ============
-            for ilat, lat_indx in enumerate(range(lat_indx_min, lat_indx_max)):
+            for ilat, lat_indx in enumerate(range(lat_indx_min, lat_indx_max + 1)):
                 gran_lat = round((90.0 - self.latitudes[lat_indx])*GRANULARITY)
 
-                for ilon, lon_indx in enumerate(range(lon_indx_min, lon_indx_max)):
+                for ilon, lon_indx in enumerate(range(lon_indx_min, lon_indx_max + 1)):
                     gran_lon = round((180.0 + self.longitudes[lon_indx])*GRANULARITY)
                     key = '{:0=5d}_{:0=5d}'.format(int(gran_lat), int(gran_lon))
 
@@ -319,7 +319,7 @@ class ClimGenNC(object,):
                     # ===============
                     pettmp[varnam_map][key] = null_value
                     if slice_is_masked_flag :
-                        val = slice[ilat,ilon,0]
+                        val = slice[0, ilat, ilon]
                         if val is ma.masked:
                             self.lgr.info('val is ma.masked for key ' + key)
                             pettmp[varnam_map][key] = None
@@ -329,7 +329,7 @@ class ClimGenNC(object,):
                     # ============================
                     if pettmp[varnam_map][key] == null_value:
                         # remove overlap with historic data - for CRU data only
-                        record = [round(val, 1) for val in slice[:, ilat,ilon]]
+                        record = [round(val, 1) for val in slice[:, ilat, ilon]]
                         pettmp[varnam_map][key] = record[fut_start_indx:]
 
             # close netCDF file
@@ -756,7 +756,7 @@ class ClimGenNC(object,):
             # collect readings for all time values
             # ====================================
 
-            slice = ncfile.variables[varname][:, lat_indx_min:lat_indx_max, lon_indx_min:lon_indx_max]
+            slice = ncfile.variables[varname][:, lat_indx_min:lat_indx_max + 1, lon_indx_min:lon_indx_max + 1]
 
             if ma.is_masked(slice):
                 slice_is_masked_flag = True
@@ -766,13 +766,13 @@ class ClimGenNC(object,):
 
             # reform slice
             # ============
-            for ilat, lat_indx in enumerate(range(lat_indx_min, lat_indx_max)):
+            for ilat, lat_indx in enumerate(range(lat_indx_min, lat_indx_max + 1)):
                 gran_lat = round((90.0 - self.latitudes_hist[lat_indx])*GRANULARITY)
 
                 print('lat index: {}'.format(lat_indx))
                 QApplication.processEvents()
 
-                for ilon, lon_indx in enumerate(range(lon_indx_min, lon_indx_max)):
+                for ilon, lon_indx in enumerate(range(lon_indx_min, lon_indx_max + 1)):
                     gran_lon = round((180.0 + self.longitudes_hist[lon_indx])*GRANULARITY)
                     key = '{:0=5d}_{:0=5d}'.format(int(gran_lat), int(gran_lon))
 
