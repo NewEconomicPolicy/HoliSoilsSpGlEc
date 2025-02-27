@@ -17,18 +17,19 @@ __author__ = 's03mm5'
 from os.path import normpath, isfile, join
 from calendar import monthrange
 from netCDF4 import Dataset
-import math
+from math import ceil, pow
 from numpy import arange, seterr, ma
 import warnings
 import csv
 from PyQt5.QtWidgets import QApplication
 
+from getClimGenFns import fetch_days_per_month
 from thornthwaite import thornthwaite
 
 null_value = -9999
 set_spacer_len = 12
 
-numSecsDay = 3600*24
+NUMSECSDAY = 3600*24
 GRANULARITY = 120
 weather_resource_permitted = list(['CRU', 'EObs', 'EWEMBI'])
 
@@ -221,7 +222,7 @@ class ClimGenNC(object,):
         lat_indices_fut = []
         lat_indices_hist = []
         clim_lat_min = self.lat_min
-        num_lats = math.ceil( abs((bb_lat_max - clim_lat_min)/resol_fut_lat) )
+        num_lats = ceil( abs((bb_lat_max - clim_lat_min)/resol_fut_lat) )
         lat_max = round(abs(num_lats*resol_fut_lat) + clim_lat_min, 8)   # rounding introduced for NCAR_CCSM4
         lat_indices_fut.append(self.latitudes.index(lat_max))
         lat_indices_hist.append(self.latitudes_hist.index(lat_max))
@@ -237,7 +238,7 @@ class ClimGenNC(object,):
         lon_indices_hist = []
         resol_fut_lon = self.resol_fut_lon
         clim_lon_min = self.lon_min
-        num_lons = math.ceil((bb_lon_max - clim_lon_min)/resol_fut_lon)
+        num_lons = ceil((bb_lon_max - clim_lon_min)/resol_fut_lon)
         lon_max = round(num_lons*resol_fut_lon + clim_lon_min, 8)
         lon_indices_fut.append(self.longitudes.index(lon_max))
         lon_indices_hist.append(self.longitudes_hist.index(lon_max))
@@ -275,30 +276,29 @@ class ClimGenNC(object,):
         aoi_indices_hist = lat_indices_hist + lon_indices_hist
         return aoi_indices_fut, aoi_indices_hist
 
-    def fetch_isimap_NC_data(self, aoi_indices, fut_start_indx=0):
+    def fetch_isimap_NC_data(self, aoi_indices, dset_strt_yr, nmnths):
         """
-        get precipitation or temperature data for a given variable and lat/long index for all times
+        fetch precipitation - units: kg m-2 s-1, and temperature - units: Kelvin, for a given lat/long AOI
         """
         # warnings.simplefilter('default')
-
-        num_key_masked = 0
         lat_indx_min, lat_indx_max, lon_indx_min, lon_indx_max = aoi_indices
-        pettmp = {}
 
-        # process future climate
-        # ======================
+        # read all times
+        # ==============
+        days_per_month = fetch_days_per_month(dset_strt_yr, nmnths)
         varnams_mapped = {'pr':'precipitation','tas':'temperature'}
-
         varnams = sorted(varnams_mapped.keys())
 
+        pettmp = {}
         for varname, fname in zip(varnams, list([self.fut_precip_fname, self.fut_tas_fname])):
+            num_key_masked = 0
             varnam_map = varnams_mapped[varname]
             pettmp[varnam_map] = {}
-            ncfile = Dataset(fname, mode='r')
+            nc_dset = Dataset(fname, mode='r')
 
             # collect readings for all time values
             # ====================================
-            slice = ncfile.variables[varname][:, lat_indx_min:lat_indx_max + 1, lon_indx_min:lon_indx_max + 1]
+            slice = nc_dset.variables[varname][:, lat_indx_min:lat_indx_max + 1, lon_indx_min:lon_indx_max + 1]
 
             if ma.is_masked(slice):
                 slice_is_masked_flag = True
@@ -328,12 +328,22 @@ class ClimGenNC(object,):
                     # add data for this coordinate
                     # ============================
                     if pettmp[varnam_map][key] == null_value:
-                        # remove overlap with historic data - for CRU data only
-                        record = [round(val, 1) for val in slice[:, ilat, ilon]]
-                        pettmp[varnam_map][key] = record[fut_start_indx:]
-
-            # close netCDF file
-            ncfile.close()
+                        if varname == 'tas':
+                            pettmp[varnam_map][key] = [round(float(val) - 273.15, 1) for val in slice[:, ilat, ilon]]
+                        else:
+                            fudge_factor = 100
+                            pettmp[varnam_map][key] = []
+                            for val, ndays in zip(slice[:, ilat, ilon], days_per_month):
+                                kgs_mnth = round(val * ndays * NUMSECSDAY, 1)
+                                vol = kgs_mnth * .001           # convert kgs to meters**3
+                                mm_mnth = pow(vol, 1/3) * 1000  # convert volume to metres then meters to mm
+                                mm_mnth = mm_mnth/fudge_factor  # fudge
+                                pettmp[varnam_map][key].append(mm_mnth)
+                            '''
+                            pettmp[varnam_map][key] = [round(val * ndays * NUMSECSDAY, 1) for val, ndays in
+                                                                            zip(slice[:, ilat, ilon], days_per_month)]
+                            '''
+            nc_dset.close()     # close netCDF file
             if num_key_masked > 0:
                 print('# masked weather keys: {}'.format(num_key_masked))
 
@@ -367,11 +377,11 @@ class ClimGenNC(object,):
         for varname, fname in zip(varnams, list([precip_fname, tas_fname])):
             varnam_map = varnams_mapped[varname]
             pettmp[varnam_map] = {}
-            ncfile = Dataset(fname)
+            nc_dset = Dataset(fname)
 
             # collect readings for all time values
             # ====================================
-            slice = ncfile.variables[varname][:, lat_indx_min:lat_indx_max + 1, lon_indx_min:lon_indx_max + 1]
+            slice = nc_dset.variables[varname][:, lat_indx_min:lat_indx_max + 1, lon_indx_min:lon_indx_max + 1]
 
             if ma.isMaskedArray(slice):
                 slice_is_masked_flag = True
@@ -383,7 +393,7 @@ class ClimGenNC(object,):
             # ======================
             if varname == 'pr':
                 days_per_month = []
-                nmonths = len(ncfile.variables[varname])
+                nmonths = len(nc_dset.variables[varname])
                 for year in range(start_year, start_year + int(nmonths/12) + 1):
                     for imnth in range(12):
                         dummy, ndays = monthrange(year, imnth + 1)
@@ -412,7 +422,7 @@ class ClimGenNC(object,):
                     # ============================
                     if pettmp[varnam_map][key] == null_value:
                         if varname == 'pr':
-                            pettmp[varnam_map][key] = [round(val*ndays*numSecsDay, 1) for val, ndays in
+                            pettmp[varnam_map][key] = [round(val*ndays*NUMSECSDAY, 1) for val, ndays in
                                                                                 zip(slice[:,ilat,ilon], days_per_month)]
                         elif varname == 'tas':
 
@@ -425,7 +435,7 @@ class ClimGenNC(object,):
                                       .format(e, self.latitudes[lat_indx], self.longitudes[lon_indx]))
 
             # close netCDF file
-            ncfile.close()
+            nc_dset.close()
             print('# masked weather keys: {}'.format(num_key_masked))
 
         return pettmp
@@ -455,12 +465,12 @@ class ClimGenNC(object,):
         for varname, fname in zip(varnams, list([precip_fname, temper_fname])):
             varnam_map = varnams_mapped[varname]
             pettmp[varnam_map] = {}
-            ncfile = Dataset(fname, mode='r')
+            nc_dset = Dataset(fname, mode='r')
 
             # collect readings for all time values
             # ====================================
             try:
-                slice = ncfile.variables[varname][:, lat_indx_min:lat_indx_max + 1, lon_indx_min:lon_indx_max + 1]
+                slice = nc_dset.variables[varname][:, lat_indx_min:lat_indx_max + 1, lon_indx_min:lon_indx_max + 1]
             except RuntimeWarning as e:
                 print(e)
 
@@ -496,7 +506,7 @@ class ClimGenNC(object,):
                         pettmp[varnam_map][key] = _check_list_for_none(slice[:,ilat,ilon].tolist())
 
             # close netCDF file
-            ncfile.close()
+            nc_dset.close()
 
         pettmp = _consistency_check(pettmp, varnams_mapped)
         return pettmp
@@ -528,12 +538,12 @@ class ClimGenNC(object,):
         for varname, fname in zip(varnams, list([precip_fname, temper_fname])):
             varnam_map = varnams_mapped[varname]
             pettmp[varnam_map] = {}
-            ncfile = Dataset(fname, mode='r')
+            nc_dset = Dataset(fname, mode='r')
 
             # collect readings for all time values
             # ====================================
             try:
-                slice = ncfile.variables[varname][:, lat_indx_min:lat_indx_max + 1, lon_indx_min:lon_indx_max + 1]
+                slice = nc_dset.variables[varname][:, lat_indx_min:lat_indx_max + 1, lon_indx_min:lon_indx_max + 1]
             except RuntimeWarning as e:
                 print(e)
 
@@ -547,7 +557,7 @@ class ClimGenNC(object,):
             # ======================
             if varname == 'pr':
                 days_per_month = []
-                nmonths = len(ncfile.variables[varname])
+                nmonths = len(nc_dset.variables[varname])
                 for year in range(start_year, start_year + int(nmonths/12) + 1):
                     for imnth in range(12):
                         dummy, ndays = monthrange(year, imnth + 1)
@@ -575,12 +585,12 @@ class ClimGenNC(object,):
                     # ============================
                     if pettmp[varnam_map][key] == null_value:
                         if varname == 'pr':
-                            pettmp[varnam_map][key] = [round(val*ndays*numSecsDay, 1) for val in slice[:,ilat,ilon]]
+                            pettmp[varnam_map][key] = [round(val*ndays*NUMSECSDAY, 1) for val in slice[:,ilat,ilon]]
                         elif varname == 'tas':
                             pettmp[varnam_map][key] = [round(val - 273.15, 1) for val in slice[:,ilat,ilon]]
 
             # close netCDF file
-            ncfile.close()
+            nc_dset.close()
 
         return pettmp
 
@@ -610,12 +620,12 @@ class ClimGenNC(object,):
         for varname, fname in zip(varnams, list([precip_fname, temper_fname])):
             varnam_map = varnams_mapped[varname]
             pettmp[varnam_map] = {}
-            ncfile = Dataset(fname, mode='r')
+            nc_dset = Dataset(fname, mode='r')
 
             # collect readings for all time values
             # ====================================
             try:
-                slice = ncfile.variables[varname][:, lat_indx_min:lat_indx_max + 1, lon_indx_min:lon_indx_max + 1]
+                slice = nc_dset.variables[varname][:, lat_indx_min:lat_indx_max + 1, lon_indx_min:lon_indx_max + 1]
             except RuntimeWarning as e:
                 print(e)
 
@@ -629,7 +639,7 @@ class ClimGenNC(object,):
             # ======================
             if varname == 'Precipalign':
                 days_per_month = []
-                nmonths = len(ncfile.variables[varname])
+                nmonths = len(nc_dset.variables[varname])
                 for year in range(start_year, start_year + int(nmonths/12) + 1):
                     for imnth in range(12):
                         dummy, ndays = monthrange(year, imnth + 1)
@@ -662,7 +672,7 @@ class ClimGenNC(object,):
                             pettmp[varnam_map][key] = [round(val - 273.15, 1) for val in slice[:,ilat,ilon]]
 
             # close netCDF file
-            ncfile.close()
+            nc_dset.close()
 
         return pettmp
 
@@ -686,11 +696,11 @@ class ClimGenNC(object,):
         for varname, fname in zip(varnams, list([self.fut_precip_fname, self.fut_tas_fname])):
             varnam_map = varnams_mapped[varname]
             pettmp[varnam_map] = {}
-            ncfile = Dataset(fname)
+            nc_dset = Dataset(fname)
 
             # collect readings for all time values
             # ====================================
-            slice = ncfile.variables[varname][lat_indx_min:lat_indx_max + 1, lon_indx_min:lon_indx_max + 1, :]
+            slice = nc_dset.variables[varname][lat_indx_min:lat_indx_max + 1, lon_indx_min:lon_indx_max + 1, :]
 
             if ma.is_masked(slice):
                 slice_is_masked_flag = True
@@ -725,7 +735,7 @@ class ClimGenNC(object,):
                         pettmp[varnam_map][key] = record[fut_start_indx:]
 
             # close netCDF file
-            ncfile.close()
+            nc_dset.close()
             if num_key_masked > 0:
                 print('# masked weather keys: {}'.format(num_key_masked))
 
@@ -751,12 +761,12 @@ class ClimGenNC(object,):
         for varname, fname in zip(varnams, list([self.hist_precip_fname, self.hist_tas_fname])):
             varnam_map = varnams_mapped[varname]
             pettmp[varnam_map] = {}
-            ncfile = Dataset(fname)
+            nc_dset = Dataset(fname)
 
             # collect readings for all time values
             # ====================================
 
-            slice = ncfile.variables[varname][:, lat_indx_min:lat_indx_max + 1, lon_indx_min:lon_indx_max + 1]
+            slice = nc_dset.variables[varname][:, lat_indx_min:lat_indx_max + 1, lon_indx_min:lon_indx_max + 1]
 
             if ma.is_masked(slice):
                 slice_is_masked_flag = True
@@ -791,7 +801,7 @@ class ClimGenNC(object,):
                         pettmp[varnam_map][key] = [round(val, 1) for val in slice[:, ilat,ilon]]
 
             # close netCDF file
-            ncfile.close()
+            nc_dset.close()
             if num_key_masked > 0:
                 print('# masked weather keys: {}'.format(num_key_masked))
 
