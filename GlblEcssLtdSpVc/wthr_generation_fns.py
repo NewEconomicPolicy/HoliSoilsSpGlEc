@@ -88,8 +88,14 @@ def generate_all_weather(form):
         QApplication.processEvents()
         #      =============================
 
-        pettmp_fut = climgen.fetch_isimap_NC_data(aoi_indices_fut)
+        dset_strt_yr = climgen.fut_wthr_set_defn['year_start']
+        dset_end_yr = climgen.fut_wthr_set_defn['year_end']
+        nmnths = (dset_end_yr - dset_strt_yr + 1) * 12
+        pettmp_fut = climgen.fetch_isimap_NC_data(aoi_indices_fut, dset_strt_yr, nmnths)
         # pettmp_fut = -999
+
+        print(WARNING_STR + 'can go no further')
+        return
 
         if pettmp_fut is None or pettmp_hist is None:
             pettmp_sim = None
