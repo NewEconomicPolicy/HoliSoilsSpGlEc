@@ -30,6 +30,7 @@ null_value = -9999
 set_spacer_len = 12
 
 NUMSECSDAY = 3600*24
+
 GRANULARITY = 120
 weather_resource_permitted = list(['CRU', 'EObs', 'EWEMBI'])
 
@@ -279,7 +280,12 @@ class ClimGenNC(object,):
     def fetch_isimap_NC_data(self, aoi_indices, dset_strt_yr, nmnths):
         """
         fetch precipitation - units: kg m-2 s-1, and temperature - units: Kelvin, for a given lat/long AOI
+            for ISIMAP precipitation - convert kg m-2 s-1 to mm month-1
+            1 kg water = 1000 mm-3      1 m-2 = 1 million mm-2 so 1 kg m-2 = 1000 / 1000000  = 0.001 mm
+            so to convert to mm day-1 = 0.001 * NUMSECSDAY = 86.4
         """
+        cnvrt_isimap_pr = 1.0 * NUMSECSDAY
+
         # warnings.simplefilter('default')
         lat_indx_min, lat_indx_max, lon_indx_min, lon_indx_max = aoi_indices
 
@@ -331,18 +337,16 @@ class ClimGenNC(object,):
                         if varname == 'tas':
                             pettmp[varnam_map][key] = [round(float(val) - 273.15, 1) for val in slice[:, ilat, ilon]]
                         else:
-                            fudge_factor = 100
+                            # precipitation - convert kg m-2 s-1 to mm month-1
+                            # ================================================
+                            # pettmp[varnam_map][key] =  = [round(val * ndays * cnvrt_isimap_pr, 1) for val, ndays in
+                            #                                                zip(slice[:, ilat, ilon], days_per_month)]
                             pettmp[varnam_map][key] = []
                             for val, ndays in zip(slice[:, ilat, ilon], days_per_month):
-                                kgs_mnth = round(val * ndays * NUMSECSDAY, 1)
-                                vol = kgs_mnth * .001           # convert kgs to meters**3
-                                mm_mnth = pow(vol, 1/3) * 1000  # convert volume to metres then meters to mm
-                                mm_mnth = mm_mnth/fudge_factor  # fudge
-                                pettmp[varnam_map][key].append(mm_mnth)
-                            '''
-                            pettmp[varnam_map][key] = [round(val * ndays * NUMSECSDAY, 1) for val, ndays in
-                                                                            zip(slice[:, ilat, ilon], days_per_month)]
-                            '''
+                                # val_mm = round(val * ndays * cnvrt_isimap_pr, 3)
+                                val_mm = round(val * cnvrt_isimap_pr, 3)
+                                pettmp[varnam_map][key].append(val_mm)
+
             nc_dset.close()     # close netCDF file
             if num_key_masked > 0:
                 print('# masked weather keys: {}'.format(num_key_masked))
