@@ -401,7 +401,7 @@ def update_progress(last_time, ncompleted, nskipped, ntotal_grow, ngrowing, nno_
 
     return last_time
 
-def update_wthr_progress(last_time, ncompleted, nskipped, ntotal_grow, ngrowing, nno_grow, region):
+def update_wthr_progress(last_time, ncompleted, nskipped=0, ntotal_grow=0, ngrowing=0, nno_grow=0, region='Europe'):
     """
     Update progress bar
     """

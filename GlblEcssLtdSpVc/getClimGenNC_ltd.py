@@ -14,7 +14,8 @@ __author__ = 's03mm5'
 # Version history
 # ---------------
 #
-from os.path import normpath, isfile, join
+from os.path import normpath, isfile, join, split, isdir
+from os import makedirs
 from calendar import monthrange
 from netCDF4 import Dataset
 from math import ceil, pow
@@ -100,8 +101,16 @@ class ClimGenNC(object,):
             sim_end_year = form.sim_end_year
 
         self.weather_resource = wthr_rsrce
+        if hasattr(form, 'sims_dir'):
+            wthr_out_dir = join(split(form.sims_dir)[0], 'Wthr', fut_clim_scen)
+            if not isdir(wthr_out_dir):
+                makedirs(wthr_out_dir)
+        else:
+            wthr_out_dir = None
 
-        # African Monsoon Multidisciplinary Analysis (AMMA) 2050 datasets
+        self.wthr_out_dir = wthr_out_dir
+
+            # African Monsoon Multidisciplinary Analysis (AMMA) 2050 datasets
         # ===============================================================
         if wthr_rsrce in form.amma_2050_allowed_gcms:
             wthr_set_key = wthr_rsrce + '_' + fut_clim_scen
@@ -755,6 +764,7 @@ class ClimGenNC(object,):
         num_key_masked = 0
         lat_indx_min, lat_indx_max, lon_indx_min, lon_indx_max = aoi_indices
         pettmp = {}
+        pettmp['lat_lons'] = {}
 
         # process historic climate
         # ========================
@@ -781,28 +791,33 @@ class ClimGenNC(object,):
             # reform slice
             # ============
             for ilat, lat_indx in enumerate(range(lat_indx_min, lat_indx_max + 1)):
-                gran_lat = round((90.0 - self.latitudes_hist[lat_indx])*GRANULARITY)
+                lat = self.latitudes_hist[lat_indx]
+                gran_lat = round((90.0 - lat)*GRANULARITY)
 
                 print('lat index: {}'.format(lat_indx))
                 QApplication.processEvents()
 
                 for ilon, lon_indx in enumerate(range(lon_indx_min, lon_indx_max + 1)):
-                    gran_lon = round((180.0 + self.longitudes_hist[lon_indx])*GRANULARITY)
+                    lon = self.longitudes_hist[lon_indx]
+                    gran_lon = round((180.0 + lon)*GRANULARITY)
                     key = '{:0=5d}_{:0=5d}'.format(int(gran_lat), int(gran_lon))
 
                     # validate values
                     # ===============
                     pettmp[varnam_map][key] = null_value
                     if slice_is_masked_flag :
-                        val = slice[0,ilat,ilon]
+                        val = slice[0, ilat, ilon]
                         if val is ma.masked:
                             self.lgr.info('val is ma.masked for key ' + key)
                             pettmp[varnam_map][key] = None
                             num_key_masked += 1
 
                     # add data for this coordinate
+                    # ============================
                     if pettmp[varnam_map][key] == null_value:
                         pettmp[varnam_map][key] = [round(val, 1) for val in slice[:, ilat,ilon]]
+
+                    pettmp['lat_lons'][key] = [lat, lon]
 
             # close netCDF file
             nc_dset.close()

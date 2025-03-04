@@ -67,7 +67,7 @@ def generate_all_weather(form):
     # ======================================================
     climgen = ClimGenNC(form)
     bbox_wthr = fetch_wthr_dset_overlap(hist_wthr_set, fut_wthr_set)
-    bbox_wthr = (12.0, 47.0, 13.0, 48.0)
+    bbox_wthr = (12.0, 47.0, 14.0, 49.0)
     aoi_indices_fut = genLocalGrid(fut_wthr_set, bbox_wthr, bbox_aoi)
     aoi_indices_hist = genLocalGrid(hist_wthr_set, bbox_wthr, bbox_aoi)
 
@@ -92,10 +92,9 @@ def generate_all_weather(form):
         dset_end_yr = climgen.fut_wthr_set_defn['year_end']
         nmnths = (dset_end_yr - dset_strt_yr + 1) * 12
         pettmp_fut = climgen.fetch_isimap_NC_data(aoi_indices_fut, dset_strt_yr, nmnths)
-        # pettmp_fut = -999
 
-        print(WARNING_STR + 'can go no further')
-        return
+        keys_hist = list(pettmp_hist['precipitation'].keys())
+        keys_fut = list(pettmp_fut['precipitation'].keys())
 
         if pettmp_fut is None or pettmp_hist is None:
             pettmp_sim = None
@@ -157,6 +156,9 @@ def make_wthr_files(site, lat, lon, climgen, pettmp_hist, pettmp_sim):
     """
     generate ECOSSE historic and future weather data
     """
+    if site is None:
+        return
+
     gran_lat, gran_lon = _gran_coords_from_lat_lon(lat, lon)
     gran_coord = '{0:0=5g}_{1:0=5g}'.format(gran_lat, gran_lon)
     clim_dir = normpath(join(site.wthr_prj_dir, climgen.region_wthr_dir, gran_coord))
