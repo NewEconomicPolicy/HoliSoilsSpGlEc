@@ -20,8 +20,7 @@ from PyQt5.QtWidgets import QApplication
 from getClimGenNC_ltd import ClimGenNC
 from getClimGenFns_ss import (genLocalGrid, open_wthr_NC_sets, fetch_wthr_dset_overlap, join_hist_fut_to_sim_wthr)
 from glbl_ecsse_low_level_fns_sv import update_wthr_progress, update_avemet_progress
-from prepare_ecosse_low_level_ss import fetch_long_term_ave_wthr_recs, make_met_files
-# from make_site_spec_files_classes import MakeSiteFiles
+from prepare_ecosse_low_level import fetch_long_term_ave_wthr_recs, make_met_files
 from hwsd_soil_class import _gran_coords_from_lat_lon
 
 from thornthwaite import thornthwaite
