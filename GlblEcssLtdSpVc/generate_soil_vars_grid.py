@@ -19,17 +19,14 @@ __author__ = 's03mm5'
 import time
 import csv
 from os.path import join, split, isdir
-from os import remove, mkdir
-from operator import itemgetter
-from copy import copy
-from netCDF4 import Dataset
+from os import mkdir
 from PyQt5.QtWidgets import QApplication
 
 from glbl_ecsse_high_level_sp import simplify_soil_recs, _simplify_aoi
 import hwsd_bil
 
 from hwsd_mu_globals_fns import gen_grid_cells_for_band
-from prepare_ecosse_files import update_progress, make_ecosse_file
+from prepare_ecosse_files import update_progress
 from glbl_ecss_cmmn_cmpntsGUI import calculate_grid_cell
 
 class SoilCsvOutputs(object):
@@ -47,6 +44,9 @@ class SoilCsvOutputs(object):
 
         self.soil_dir = soil_dir
         self.study = form.w_study.text()
+
+        self.output_fhs = None
+        self.writers = None
 
     def create_soil_files(self):
         """
@@ -104,7 +104,7 @@ def _write_to_soil_files(form, soil_csvs, num_band):
     hwsd.bad_muglobals = form.hwsd_mu_globals.bad_mu_globals
     aoi_res, bbox = gen_grid_cells_for_band(hwsd, form.req_resol_upscale)
     if form.w_use_high_cover.isChecked():
-        aoi_res =  _simplify_aoi(aoi_res)
+        aoi_res = _simplify_aoi(aoi_res)
 
     lon_ll_aoi, lat_ll_aoi, lon_ur_aoi, lat_ur_aoi = bbox
     num_meta_cells = len(aoi_res)
@@ -114,11 +114,14 @@ def _write_to_soil_files(form, soil_csvs, num_band):
 
     if num_meta_cells == 0:
         mess = 'No aoi_res recs therefore unable to create simulation files... \n'
-        print(mess); form.lgr.info(mess)
+        print(mess)
+        form.lgr.info(mess)
+
         return
 
     mess = 'Generated {} Area of Interest grid cells for band {} '.format(num_meta_cells, num_band)
-    form.lgr.info(mess); print(mess)
+    form.lgr.info(mess)
+    print(mess)
 
     print('Writing soil data for band {}...'.format(num_band))
     QApplication.processEvents()
@@ -158,21 +161,22 @@ def _write_to_soil_files(form, soil_csvs, num_band):
         QApplication.processEvents()
 
     mess = '\nBand: {}\tskipped: {}\tcompleted: {}'.format(num_band, skipped, completed)
-    print(mess); QApplication.processEvents()
+    print(mess)
+    QApplication.processEvents()
 
     print('')   # spacer
     return completed
 
 def generate_soil_outputs(form):
-    '''
+    """
     called from GUI
-    '''
+    """
     if hasattr(form, 'w_max_cells'):
         max_cells = int(form.w_max_cells.text())
     else:
         max_cells = 100000000
 
-    if form.hwsd_mu_globals == None:
+    if form.hwsd_mu_globals is None:
         print('Undetermined HWSD aoi - please select a valid HSWD csv file')
         return
 
@@ -187,7 +191,7 @@ def generate_soil_outputs(form):
     lat_ll = 34.5
     lon_ur = 35.0
     lat_ur = 72.0
-    form.bbox =  list([lon_ll, lat_ll, lon_ur, lat_ur])
+    form.bbox = list([lon_ll, lat_ll, lon_ur, lat_ur])
 
     # lat_ll_aoi is the floor i.e. least latitude, of the HWSD aoi which marks the end of the banding loop
     # ====================================================================================================
@@ -195,11 +199,11 @@ def generate_soil_outputs(form):
     lon_ll_aoi = form.hwsd_mu_globals.lon_ll_aoi
     lat_ur_aoi = form.hwsd_mu_globals.lat_ur_aoi
     lon_ur_aoi = form.hwsd_mu_globals.lon_ur_aoi
-    bbox_aoi = list([lon_ll_aoi,lat_ll_aoi,lon_ur_aoi,lat_ur_aoi])
+    bbox_aoi = list([lon_ll_aoi, lat_ll_aoi, lon_ur_aoi, lat_ur_aoi])
 
     # check overlap - study too far to west or east or too far south or north of AOI file
     # ===================================================================================
-    if (lon_ur < lon_ll_aoi) or (lon_ll > lon_ur_aoi) or  (lat_ur < lat_ll_aoi) or (lat_ll > lat_ur_aoi):
+    if (lon_ur < lon_ll_aoi) or (lon_ll > lon_ur_aoi) or (lat_ur < lat_ll_aoi) or (lat_ll > lat_ur_aoi):
         print('Error: Study bounding box and HWSD CSV file do not overlap - no simulations are possible')
         return
 
@@ -228,7 +232,7 @@ def generate_soil_outputs(form):
 
     form.hwsd_mu_globals.soil_recs = simplify_soil_recs(soil_recs, use_dom_soil_flag)
     form.hwsd_mu_globals.bad_mu_globals = [0] + hwsd.bad_muglobals
-    del(hwsd); del(soil_recs)
+    del hwsd, soil_recs
 
     # Create empty soil files
     soil_csvs = SoilCsvOutputs(form)
@@ -250,15 +254,15 @@ def generate_soil_outputs(form):
         # if the latitude floor of the band has not reached the ceiling of the HWSD aoi then skip this band
         if lat_ll_new > form.hwsd_mu_globals.lat_ur_aoi or num_band < start_at_band:
             print('Skipping out of area band {} of {} with latitude extent of min: {}\tmax: {}\n'
-              .format(num_band, nsteps, round(lat_ll_new,6), round(lat_ur, 6)))
+              .format(num_band, nsteps, round(lat_ll_new, 6), round(lat_ur, 6)))
         else:
             print('\nProcessing band {} of {} with latitude extent of min: {}\tmax: {}'
-                                                    .format(num_band, nsteps, round(lat_ll_new,6), round(lat_ur, 6)))
+                                                    .format(num_band, nsteps, round(lat_ll_new, 6), round(lat_ur, 6)))
             QApplication.processEvents()
 
             form.bbox = list([lon_ll, lat_ll_new, lon_ur, lat_ur])
             completed = _write_to_soil_files(form, soil_csvs, num_band)  # does actual work
-            ncompleted += completed
+            ncompleted += 1
             if ncompleted >= max_cells:
                 print('Finished processing after generating {} cells'.format(ncompleted))
                 break
@@ -279,4 +283,3 @@ def generate_soil_outputs(form):
     print('\nFinished soil metric writing')
 
     return
-

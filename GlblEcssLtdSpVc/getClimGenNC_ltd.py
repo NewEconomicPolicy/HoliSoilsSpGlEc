@@ -952,12 +952,14 @@ class ClimGenNC(object,):
             fpout.close()
 
         # note float conversion from float32 otherwise rounding does not work as expected
-        lta = {'pet': [], 'precip': lta_precip, 'tas': lta_tmean}
-        lta['pet'] = thornthwaite(lta['tas'], lat_inp, year)
+        # ===============================================================================
+        if site is not None:
+            lta = {'pet': [], 'precip': lta_precip, 'tas': lta_tmean}
+            lta['pet'] = thornthwaite(lta['tas'], lat_inp, year)
 
-        site.lta_pet = [round(float(pet), 1) for pet in lta['pet']]
-        site.lta_precip = [round(float(precip), 1) for precip in lta['precip']]
-        site.lta_tmean = [round(float(tmean), 1) for tmean in lta['tas']]
+            site.lta_pet = [round(float(pet), 1) for pet in lta['pet']]
+            site.lta_precip = [round(float(precip), 1) for precip in lta['precip']]
+            site.lta_tmean = [round(float(tmean), 1) for tmean in lta['tas']]
 
         self.lgr.info('Successfully wrote average weather file {} in function {}'.format(met_ave_file, func_name))
 

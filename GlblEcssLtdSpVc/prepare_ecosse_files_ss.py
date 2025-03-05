@@ -52,16 +52,16 @@ def _weather_for_simulation(amma_2050_allowed_gcms, weather_sets, climgen, pettm
         fut_start_year = weather_sets['NCAR_CCSM4']['year_start']
     elif wthr_rsrc in amma_2050_allowed_gcms:
         hist_start_year = weather_sets[wthr_rsrc + '_historical']['year_start']
-        hist_end_year   = weather_sets[wthr_rsrc + '_historical']['year_end']
-        fut_start_year  = weather_sets[wthr_rsrc + '_rcp26']['year_start']
+        hist_end_year = weather_sets[wthr_rsrc + '_historical']['year_end']
+        fut_start_year = weather_sets[wthr_rsrc + '_rcp26']['year_start']
     elif wthr_rsrc == 'EObs':
         hist_start_year = weather_sets['EObs_Mnth']['year_start']
         hist_end_year = weather_sets['EObs_Mnth']['year_end']
         fut_start_year = weather_sets['EObs_Mnth']['year_start']
     elif wthr_rsrc == 'EFISCEN-ISIMIP':
         hist_start_year = weather_sets['CRU_hist']['year_start']
-        hist_end_year   = weather_sets['CRU_hist']['year_end']
-        fut_start_year  = weather_sets[wthr_rsrc + '_ssp126']['year_start']
+        hist_end_year = weather_sets['CRU_hist']['year_end']
+        fut_start_year = weather_sets[wthr_rsrc + '_ssp126']['year_start']
     else:
         # CRU is default
         hist_start_year = weather_sets['CRU_hist']['year_start']
@@ -77,7 +77,7 @@ def _weather_for_simulation(amma_2050_allowed_gcms, weather_sets, climgen, pettm
         # historic takes priority over future weather
         # ===========================================
         indx_hist_strt = 12*(sim_start_year - hist_start_year)
-        indx_fut_strt  = 12*(hist_end_year + 1 - fut_start_year)
+        indx_fut_strt = 12*(hist_end_year + 1 - fut_start_year)
         for metric in pettmp_fut:
             pettmp_sim[metric] = pettmp_hist[metric][indx_hist_strt:] + pettmp_fut[metric][indx_fut_strt:]
 
@@ -99,10 +99,10 @@ def update_progress(last_time, start_time, completed, est_num_sims, skipped, war
     return last_time
 
 def _make_met_files(clim_dir, latitude, climgen, pettmp_grid_cell):
-    '''
+    """
     feed annual temperatures to Thornthwaite equations to estimate Potential Evapotranspiration [mm/month]
-    '''
-    func_name =  '_make_met_files'
+    """
+    func_name = '_make_met_files'
 
     if not lexists(clim_dir):
         try:
@@ -113,7 +113,7 @@ def _make_met_files(clim_dir, latitude, climgen, pettmp_grid_cell):
             exit(0)
 
     start_year = climgen.sim_start_year
-    end_year   = climgen.sim_end_year
+    end_year = climgen.sim_end_year
     precip = pettmp_grid_cell['precipitation']         #
     temper = pettmp_grid_cell['temperature']
     nmnths = len(temper)
@@ -124,12 +124,12 @@ def _make_met_files(clim_dir, latitude, climgen, pettmp_grid_cell):
         met_path = join(clim_dir, fname)
 
         indx2 = indx1 + 12
-        if indx2 > nmnths:
+        if indx2 >= nmnths:
             break
 
         # precipitation and temperature
         precipitation = precip[indx1:indx2]            #
-        tmean =         temper[indx1:indx2]
+        tmean = temper[indx1:indx2]
 
         # pet
         if max(tmean) > 0.0:
@@ -142,8 +142,8 @@ def _make_met_files(clim_dir, latitude, climgen, pettmp_grid_cell):
 
         # TODO: do something about occasional runtime warning...
         pot_evapotrans = [round(p, 2) for p in pet]
-        precip_out     = [round(p, 2) for p in precipitation]
-        tmean_out      = [round(t, 2) for t in tmean]
+        precip_out = [round(p, 2) for p in precipitation]
+        tmean_out = [round(t, 2) for t in tmean]
 
         # write file
         output = []
@@ -174,10 +174,10 @@ def make_ecosse_file(form, climgen, ltd_data, site_rec, province, pettmp_grid_ce
     # unpack weather
     # ==============
     pettmp_hist = {}
-    pettmp_fut  = {}
+    pettmp_fut = {}
     for metric in list(['precipitation','temperature']):
         pettmp_hist[metric] = pettmp_grid_cell[metric][0]
-        pettmp_fut[metric]  = pettmp_grid_cell[metric][1]
+        pettmp_fut[metric] = pettmp_grid_cell[metric][1]
 
     # calculate historic average weather
     # ==================================
@@ -197,19 +197,19 @@ def make_ecosse_file(form, climgen, ltd_data, site_rec, province, pettmp_grid_ce
     indx_start = 12*(hist_start_year - dset_start_year)
 
     hist_end_year = climgen.hist_end_year
-    indx_end   = 12*(hist_end_year - dset_start_year + 1) # end year includes all 12 months - TODO: check
+    indx_end = 12*(hist_end_year - dset_start_year + 1) # end year includes all 12 months - TODO: check
 
     # use dict-comprehension to initialise precip. and temperature dictionaries
     # =========================================================================
     hist_precip = {mnth: 0.0 for mnth in climgen.months}
-    hist_tmean  = {mnth: 0.0 for mnth in climgen.months}
+    hist_tmean = {mnth: 0.0 for mnth in climgen.months}
 
     for indx in range(indx_start, indx_end, 12):
 
         for imnth, month in enumerate(climgen.months):
             try:
                 hist_precip[month] += pettmp_hist['precipitation'][indx + imnth]
-                hist_tmean[month]  += pettmp_hist['temperature'][indx + imnth]
+                hist_tmean[month] += pettmp_hist['temperature'][indx + imnth]
             except IndexError as err:
                 mess = str(err) + ' in ' + func_name
                 print(mess); form.lgr.info(mess)
@@ -236,16 +236,14 @@ def make_ecosse_file(form, climgen, ltd_data, site_rec, province, pettmp_grid_ce
     else:
         study = form.w_study.text()
     gran_coord = '{0:0=5g}_{1:0=5g}'.format(gran_lat, gran_lon)
-
-    met_rel_path = join('..', '..', '..', 'Wthr', climgen.fut_clim_scen, gran_coord, '')
-
-    clim_dir = normpath(join(climgen.wthr_out_dir, gran_coord))
+    met_rel_path = '..\\' + gran_coord + '\\'
+    clim_dir = normpath(join(sims_dir, study, gran_coord))
     simulation_weather = _weather_for_simulation(form.amma_2050_allowed_gcms, form.weather_sets, climgen,
                                                                                             pettmp_hist, pettmp_fut)
     _make_met_files(clim_dir, latitude, climgen, simulation_weather)
 
     # create additional weather related files from already existing met files
-    irc = climgen.create_FutureAverages(clim_dir, latitude, gran_lat, longitude, gran_lon)
+    irc = climgen.create_FutureAverages(clim_dir, latitude, gran_coord, site=None, lta_precip=None, lta_tmean=None)
 
     # TODO: improve
     write_csv_wthr_file(form.lgr, study, wthr_rsrc, fut_clim_scen, latitude, longitude,
