@@ -28,7 +28,7 @@ import hwsd_bil
 
 from hwsd_mu_globals_fns import gen_grid_cells_for_band
 from litter_and_orchidee_fns import resize_yrs_pi
-from prepare_ecosse_files import update_progress, make_ecosse_file
+from prepare_ecosse_files_ltd import update_progress, make_ecosse_file
 from glbl_ecss_cmmn_cmpntsGUI import calculate_grid_cell
 from mngmnt_fns_and_class import ManagementSet, check_mask_location, get_hilda_land_uses
 
