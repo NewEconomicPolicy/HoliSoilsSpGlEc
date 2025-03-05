@@ -29,11 +29,14 @@ from thornthwaite import thornthwaite
 
 null_value = -9999
 set_spacer_len = 12
+MAX_CELLS = 9999999
 
 NUMSECSDAY = 3600*24
 
 GRANULARITY = 120
 weather_resource_permitted = list(['CRU', 'EObs', 'EWEMBI'])
+
+WARNING = '*** Warning *** '
 
 def _consistency_check(pettmp, varnams_mapped):
     """
@@ -81,7 +84,15 @@ class ClimGenNC(object,):
 
         func_name =  __prog__ +  ' ClimGenNC __init__'
 
-        # determine user choices
+        if hasattr(form, 'w_mnthly'):
+            if form.w_mnthly.isChecked():  # monthly timestep
+                sim_mnthly_flag = True
+            else:
+                sim_mnthly_flag = False  # daily timestep
+        else:
+            sim_mnthly_flag = True
+
+            # determine user choices
         # ======================
         if hasattr(form, 'combo10w'):
             wthr_rsrce = form.combo10w.currentText()
@@ -109,6 +120,7 @@ class ClimGenNC(object,):
             wthr_out_dir = None
 
         self.wthr_out_dir = wthr_out_dir
+        self.sim_mnthly_flag = sim_mnthly_flag
 
             # African Monsoon Multidisciplinary Analysis (AMMA) 2050 datasets
         # ===============================================================
@@ -286,7 +298,7 @@ class ClimGenNC(object,):
         aoi_indices_hist = lat_indices_hist + lon_indices_hist
         return aoi_indices_fut, aoi_indices_hist
 
-    def fetch_isimap_NC_data(self, aoi_indices, dset_strt_yr, nmnths):
+    def fetch_isimap_NC_data(self, aoi_indices, dset_strt_yr, nmnths, max_cells=MAX_CELLS):
         """
         fetch precipitation - units: kg m-2 s-1, and temperature - units: Kelvin, for a given lat/long AOI
             for ISIMAP precipitation - convert kg m-2 s-1 to mm month-1
@@ -304,7 +316,9 @@ class ClimGenNC(object,):
         varnams_mapped = {'pr':'precipitation','tas':'temperature'}
         varnams = sorted(varnams_mapped.keys())
 
+        icount = 0
         pettmp = {}
+        pettmp['lat_lons'] = {}
         for varname, fname in zip(varnams, list([self.fut_precip_fname, self.fut_tas_fname])):
             num_key_masked = 0
             varnam_map = varnams_mapped[varname]
@@ -324,10 +338,12 @@ class ClimGenNC(object,):
             # reform slice
             # ============
             for ilat, lat_indx in enumerate(range(lat_indx_min, lat_indx_max + 1)):
-                gran_lat = round((90.0 - self.latitudes[lat_indx])*GRANULARITY)
+                lat = self.latitudes[lat_indx]
+                gran_lat = round((90.0 - lat)*GRANULARITY)
 
                 for ilon, lon_indx in enumerate(range(lon_indx_min, lon_indx_max + 1)):
-                    gran_lon = round((180.0 + self.longitudes[lon_indx])*GRANULARITY)
+                    lon = self.longitudes[lon_indx]
+                    gran_lon = round((180.0 + lon)*GRANULARITY)
                     key = '{:0=5d}_{:0=5d}'.format(int(gran_lat), int(gran_lon))
 
                     # validate values
@@ -356,9 +372,18 @@ class ClimGenNC(object,):
                                 val_mm = round(val * cnvrt_isimap_pr, 3)
                                 pettmp[varnam_map][key].append(val_mm)
 
+                    pettmp['lat_lons'][key] = [lat, lon]
+                    icount += 1
+                    if icount >= max_cells:
+                        break
+
+                if icount >= max_cells:
+                    break
+
             nc_dset.close()     # close netCDF file
             if num_key_masked > 0:
                 print('# masked weather keys: {}'.format(num_key_masked))
+                QApplication.processEvents()
 
         return pettmp
 
@@ -754,7 +779,7 @@ class ClimGenNC(object,):
 
         return pettmp
 
-    def fetch_cru_historic_NC_data(self, aoi_indices, num_band):
+    def fetch_cru_historic_NC_data(self, aoi_indices, num_band, max_cells=MAX_CELLS):
         """
         get precipitation or temperature data for a given variable and lat/long index for all times
         CRU uses NETCDF4 format
@@ -790,6 +815,7 @@ class ClimGenNC(object,):
 
             # reform slice
             # ============
+            icount = 0
             for ilat, lat_indx in enumerate(range(lat_indx_min, lat_indx_max + 1)):
                 lat = self.latitudes_hist[lat_indx]
                 gran_lat = round((90.0 - lat)*GRANULARITY)
@@ -818,15 +844,21 @@ class ClimGenNC(object,):
                         pettmp[varnam_map][key] = [round(val, 1) for val in slice[:, ilat,ilon]]
 
                     pettmp['lat_lons'][key] = [lat, lon]
+                    icount += 1
+                    if icount >= max_cells:
+                        break
 
-            # close netCDF file
-            nc_dset.close()
+                if icount >= max_cells:
+                    break
+
+            nc_dset.close()     # close netCDF file
             if num_key_masked > 0:
                 print('# masked weather keys: {}'.format(num_key_masked))
+                QApplication.processEvents()
 
         return pettmp
 
-    def create_FutureAverages(self, clim_dir, lat_inp, granLat, long_inp, granLon):
+    def create_FutureAverages(self, clim_dir, lat_inp, gran_coord, site, lta_precip, lta_tmean):
         """
         use prexisting metyyyys.txt files to generate a text file of average weather which will subsequently
         be included in the input.txt file
@@ -843,7 +875,7 @@ class ClimGenNC(object,):
         ave_met_file = join(normpath(clim_dir), self.fut_ave_file)
         met_ave_file = join(normpath(clim_dir), self.met_ave_file)
         if isfile(ave_met_file) and isfile(met_ave_file):
-            return 0
+            print(WARNING + 'Files:\n\t' +  ave_met_file + '\n\talready exist - will overwrite')
 
         # read  precipitation and temperature
         fut_precip = {}
@@ -903,8 +935,8 @@ class ClimGenNC(object,):
             pet = thornthwaite(ave_tmean, lat_inp, year)
         else:
             pet = [0.0]*12
-            mess = '*** Warning *** all monthly average temperatures are below zero in ' + full_func_name + \
-                   ' for lat/lon: {}/{}\tgranular lat/lon: {}/{}'.format(lat_inp, long_inp, granLat, granLon)
+            mess = WARNING + 'monthly average temperatures are below zero in ' + full_func_name
+            mess += ' for latitude: {}\tgranular coord: {}'.format(lat_inp, gran_coord)
             print(mess)
 
         pot_evapotrans = [round(p, 1) for p in pet]
@@ -918,6 +950,14 @@ class ClimGenNC(object,):
             writer = csv.writer(fpout, delimiter='\t')
             writer.writerows(output)
             fpout.close()
+
+        # note float conversion from float32 otherwise rounding does not work as expected
+        lta = {'pet': [], 'precip': lta_precip, 'tas': lta_tmean}
+        lta['pet'] = thornthwaite(lta['tas'], lat_inp, year)
+
+        site.lta_pet = [round(float(pet), 1) for pet in lta['pet']]
+        site.lta_precip = [round(float(precip), 1) for precip in lta['precip']]
+        site.lta_tmean = [round(float(tmean), 1) for tmean in lta['tas']]
 
         self.lgr.info('Successfully wrote average weather file {} in function {}'.format(met_ave_file, func_name))
 

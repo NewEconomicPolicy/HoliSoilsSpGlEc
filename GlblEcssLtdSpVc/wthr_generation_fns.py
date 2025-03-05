@@ -33,6 +33,7 @@ QUICK_FLAG = False       # forces break from loops after max cells reached in fi
 GRANULARITY = 120
 NEXPCTD_MET_FILES = 302
 MAX_BANDS = 500000
+MAX_CELLS = 9999999
 LTA_RECS_FN = 'lta_ave.txt'
 
 SPACER_LEN = 12
@@ -67,7 +68,13 @@ def generate_all_weather(form):
     # ======================================================
     climgen = ClimGenNC(form)
     bbox_wthr = fetch_wthr_dset_overlap(hist_wthr_set, fut_wthr_set)
-    bbox_wthr = (12.0, 47.0, 14.0, 49.0)
+
+    # development nly
+    # ===============
+    if max_cells == 3:
+        bbox_wthr = (12.0, 47.0, 14.0, 49.0)
+        max_cells = MAX_CELLS
+
     aoi_indices_fut = genLocalGrid(fut_wthr_set, bbox_wthr, bbox_aoi)
     aoi_indices_hist = genLocalGrid(hist_wthr_set, bbox_wthr, bbox_aoi)
 
@@ -76,13 +83,14 @@ def generate_all_weather(form):
     print('')
     ntotal_wrttn, no_data, ncmpltd, nalrdys = 4*[0]
     last_time = time()
+    num_band = -999
     for wthr_set in form.weather_set_linkages['EFISCEN-ISIMIP']:
         this_gcm, scnr = wthr_set.split('_')
         if scnr == 'hist':
             print('Getting historic weather data from weather set: ' + hist_wthr_set['ds_precip'])
             QApplication.processEvents()
 
-            pettmp_hist = climgen.fetch_cru_historic_NC_data(aoi_indices_hist, num_band=-999)
+            pettmp_hist = climgen.fetch_cru_historic_NC_data(aoi_indices_hist, num_band, max_cells)
 
         print('\nGetting future data from weather set: ' + this_gcm + '\tScenario: ' + scnr)
         QApplication.processEvents()
@@ -91,7 +99,7 @@ def generate_all_weather(form):
         dset_strt_yr = climgen.fut_wthr_set_defn['year_start']
         dset_end_yr = climgen.fut_wthr_set_defn['year_end']
         nmnths = (dset_end_yr - dset_strt_yr + 1) * 12
-        pettmp_fut = climgen.fetch_isimap_NC_data(aoi_indices_fut, dset_strt_yr, nmnths)
+        pettmp_fut = climgen.fetch_isimap_NC_data(aoi_indices_fut, dset_strt_yr, nmnths, max_cells)
 
         keys_hist = list(pettmp_hist['precipitation'].keys())
         keys_fut = list(pettmp_fut['precipitation'].keys())
@@ -104,12 +112,12 @@ def generate_all_weather(form):
 
         # create weather
         # ==============
-        lat, lon = 2*[None]
-        # site_obj = MakeSiteFiles(form, climgen)
-        site_obj = None
-        make_wthr_files(site_obj, lat, lon, climgen, pettmp_hist, pettmp_sim)
-        ncmpltd += 1
-        ntotal_wrttn += 1
+        site_obj = MakeSiteObj(form, climgen)
+        for key in keys_hist:
+            lat, lon = pettmp_hist['lat_lons'][key]
+            make_wthr_files(site_obj, lat, key, climgen, pettmp_hist, pettmp_fut)
+            ncmpltd += 1
+            ntotal_wrttn += 1
 
         last_time = update_wthr_progress(last_time, ncmpltd)
         if ncmpltd >= max_cells:
@@ -152,34 +160,49 @@ def make_avemet_file(clim_dir, lta_precip, lta_pet, lta_tmean):
 
     return
 
-def make_wthr_files(site, lat, lon, climgen, pettmp_hist, pettmp_sim):
+def make_wthr_files(site, lat, gran_coord, climgen, pettmp_hist, pettmp_sim):
     """
     generate ECOSSE historic and future weather data
     """
-    if site is None:
-        return
 
-    gran_lat, gran_lon = _gran_coords_from_lat_lon(lat, lon)
-    gran_coord = '{0:0=5g}_{1:0=5g}'.format(gran_lat, gran_lon)
-    clim_dir = normpath(join(site.wthr_prj_dir, climgen.region_wthr_dir, gran_coord))
+    clim_dir = normpath(join(site.wthr_prj_dir, gran_coord))
     if not isdir(clim_dir):
         makedirs(clim_dir)  # always create even if no weather data
 
     if pettmp_hist is None:
         return
 
+    if gran_coord not in pettmp_hist['precipitation']:
+        print(WARNING_STR + 'granular coordinate {} with lat: {}\tnot in historic weather'.format(gran_coord, lat))
+        QApplication.processEvents()
+        return
+
+    if gran_coord not in pettmp_sim['precipitation']:
+        print(WARNING_STR + 'granular coordinate {} with lat: {}\tnot in simulation weather'.format(gran_coord, lat))
+        QApplication.processEvents()
+        return
+
     # calculate historic average weather
     # ==================================
-    hist_lta_precip, hist_lta_tmean, hist_weather_recs = fetch_long_term_ave_wthr_recs(climgen, pettmp_hist)
+    pettmp_hist_site = {}
+    pettmp_hist_site['precip'] = pettmp_hist['precipitation'][gran_coord]
+    pettmp_hist_site['tas'] = pettmp_hist['temperature'][gran_coord]
+    hist_lta_precip, hist_lta_tmean, hist_weather_recs = fetch_long_term_ave_wthr_recs(climgen, pettmp_hist_site)
 
     # write a single set of met files for all simulations for this grid cell
     # ======================================================================
-    met_fnames = make_met_files(clim_dir, lat, climgen, pettmp_sim)  # future weather
+    pettmp_sim_site = {}
+    pettmp_sim_site['precip'] = pettmp_sim['precipitation'][gran_coord]
+    pettmp_sim_site['tas'] = pettmp_sim['temperature'][gran_coord]
+    met_fnames = make_met_files(clim_dir, lat, climgen, pettmp_sim_site)  # future weather
+    nmet_fns = len(met_fnames)
 
     # create additional weather related files from already existing met files
     # =======================================================================
-    irc = climgen.create_FutureAverages(clim_dir, lat, site, hist_lta_precip, hist_lta_tmean)
-    lta_ave_fn = _make_lta_file(site, clim_dir)
+
+    irc = climgen.create_FutureAverages(clim_dir, lat, gran_coord, site, hist_lta_precip, hist_lta_tmean)
+    if irc == 0:
+        lta_ave_fn = _make_lta_file(site, clim_dir)
 
     return
 
@@ -339,3 +362,14 @@ def _make_line(data, comment):
     spacer = ' ' * spacer_len
 
     return '{}{}# {}\n'.format(data, spacer, comment)
+
+class MakeSiteObj(object,):
+    """
+    C
+    """
+    def __init__(self, form, climgen):
+
+        func_name =  __prog__ +  ' ClimGenNC __init__'
+
+        self.wthr_prj_dir = climgen.wthr_out_dir
+        self.months = climgen.months

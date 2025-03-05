@@ -20,12 +20,15 @@ import sys
 from calendar import isleap
 import json
 from glob import glob
+from PyQt5.QtWidgets import QApplication
 
 from thornthwaite import thornthwaite
 
 _monthdays = [31,28,31,30,31,30,31,31,30,31,30,31]
 _leap_monthdays = [31,29,31,30,31,30,31,31,30,31,30,31]
 set_spacer_len = 12
+
+ERROR_STR = '*** Error *** '
 
 def write_study_definition_file(form):
     """
@@ -381,7 +384,7 @@ def fetch_long_term_ave_wthr_recs(climgen, pettmp_hist):
     """
     generate long term average weather records
     """
-    func_name = 'fetch_long_term_average_recs'
+    func_name = __prog__ + ' fetch_long_term_ave_wthr_recs'
 
     # calculate historic average weather
     # ==================================
