@@ -18,12 +18,14 @@ from os.path import normpath, isfile, join, split, isdir
 from os import makedirs
 from calendar import monthrange
 from netCDF4 import Dataset
-from math import ceil, pow
+from math import ceil
 from numpy import arange, seterr, ma
+from time import time
 import warnings
 import csv
 from PyQt5.QtWidgets import QApplication
 
+from prepare_ecosse_files import update_progress
 from getClimGenFns import fetch_days_per_month
 from thornthwaite import thornthwaite
 
@@ -790,6 +792,7 @@ class ClimGenNC(object,):
         lat_indx_min, lat_indx_max, lon_indx_min, lon_indx_max = aoi_indices
         pettmp = {}
         pettmp['lat_lons'] = {}
+        nlats = lat_indx_max - lat_indx_min + 1
 
         # process historic climate
         # ========================
@@ -802,9 +805,16 @@ class ClimGenNC(object,):
             pettmp[varnam_map] = {}
             nc_dset = Dataset(fname)
 
+            # for user feedback
+            # =================
+            last_time = time()
+            start_time = None
+            completed_lats = 0
+            skipped = 0
+            warn_count = 0
+
             # collect readings for all time values
             # ====================================
-
             slice = nc_dset.variables[varname][:, lat_indx_min:lat_indx_max + 1, lon_indx_min:lon_indx_max + 1]
 
             if ma.is_masked(slice):
@@ -820,7 +830,7 @@ class ClimGenNC(object,):
                 lat = self.latitudes_hist[lat_indx]
                 gran_lat = round((90.0 - lat)*GRANULARITY)
 
-                print('lat index: {}'.format(lat_indx))
+                last_time = update_progress(last_time, start_time, completed_lats, nlats, skipped, warn_count)
                 QApplication.processEvents()
 
                 for ilon, lon_indx in enumerate(range(lon_indx_min, lon_indx_max + 1)):
@@ -848,6 +858,7 @@ class ClimGenNC(object,):
                     if icount >= max_cells:
                         break
 
+                completed_lats += 1
                 if icount >= max_cells:
                     break
 
@@ -875,7 +886,7 @@ class ClimGenNC(object,):
         ave_met_file = join(normpath(clim_dir), self.fut_ave_file)
         met_ave_file = join(normpath(clim_dir), self.met_ave_file)
         if isfile(ave_met_file) and isfile(met_ave_file):
-            print(WARNING + 'Files:\n\t' +  ave_met_file + '\n\talready exist - will overwrite')
+            self.lgr.info(WARNING + 'Files:\n\t' +  ave_met_file + '\n\talready exist - will overwrite')
 
         # read  precipitation and temperature
         fut_precip = {}
