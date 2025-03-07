@@ -21,7 +21,7 @@ from getClimGenNC_ltd import ClimGenNC
 from getClimGenFns_ss import (genLocalGrid, open_wthr_NC_sets, fetch_wthr_dset_overlap, join_hist_fut_to_all_wthr)
 from glbl_ecsse_low_level_fns_sv import update_wthr_progress, update_avemet_progress
 from prepare_ecosse_low_level import fetch_long_term_ave_wthr_recs, make_met_files
-from hwsd_soil_class import _gran_coords_from_lat_lon
+from hwsd_soil_class import _gran_coords_from_lat_lon as gran_coords_from_lat_lon
 from weather_datasets import write_csv_wthr_file
 
 from thornthwaite import thornthwaite
@@ -233,7 +233,7 @@ def _check_wthr_cell_exstnc(sims_dir, climgen, lat, lon, read_lta_flag=False):
     integrity_flag = False
     hist_lta_recs = None
     met_fnames = None
-    gran_lat, gran_lon = _gran_coords_from_lat_lon(lat, lon)
+    gran_lat, gran_lon = gran_coords_from_lat_lon(lat, lon)
     gran_coord = '{0:0=5g}_{1:0=5g}'.format(gran_lat, gran_lon)
     clim_dir = normpath(join(sims_dir, climgen.region_wthr_dir, gran_coord))
     if isdir(clim_dir):
