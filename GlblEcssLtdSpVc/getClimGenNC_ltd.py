@@ -82,7 +82,7 @@ class ClimGenNC(object,):
     """
     C
     """
-    def __init__(self, form):
+    def __init__(self, form, fut_clim_scen=None):
 
         func_name =  __prog__ +  ' ClimGenNC __init__'
 
@@ -98,7 +98,8 @@ class ClimGenNC(object,):
         # ======================
         if hasattr(form, 'combo10w'):
             wthr_rsrce = form.combo10w.currentText()
-            fut_clim_scen = form.combo10.currentText()
+            if fut_clim_scen is None:
+                fut_clim_scen = form.combo10.currentText()
             hist_start_year = int(form.combo09s.currentText())
             hist_end_year = int(form.combo09e.currentText())
             ave_weather_flag = form.w_ave_weather.isChecked()

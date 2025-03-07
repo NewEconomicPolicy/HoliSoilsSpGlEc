@@ -21,17 +21,26 @@ GRANULARITY = 120
 ERROR_STR = '*** Error *** '
 WARNING = '*** Warning *** '
 
-def join_hist_fut_to_sim_wthr(climgen, pettmp_hist, pettmp_fut):
+def join_hist_fut_to_all_wthr(climgen, pettmp_hist, pettmp_fut):
     """
     join historic and future weather
      """
-    sim_strt_yr = climgen.sim_start_year
-    sim_end_yr = climgen.sim_end_year
-    indx_hist_strt, indx_hist_end, next_strt_yr = _fetch_wthrset_indices(climgen.hist_wthr_set_defn,
-                                                                         sim_strt_yr, sim_end_yr)
-    indx_fut_strt, indx_fut_end, dummy = _fetch_wthrset_indices(climgen.fut_wthr_set_defn,
-                                                                next_strt_yr, sim_end_yr)
-    pettmp_sim = {}
+    fut_yr_strt = climgen.fut_wthr_set_defn['year_start']
+    hist_yr_end = climgen.hist_wthr_set_defn['year_end']
+    overlap_yrs = hist_yr_end - fut_yr_strt + 1
+    if overlap_yrs < 0:
+        mess = ERROR_STR + 'historic and future weather datasets are not contiguous or do not overlap'
+        print(mess + '  - cannot proceed')
+        QApplication.processEvents()
+        return
+
+    indx_hist_abbrev = overlap_yrs*12
+
+    pettmp_all = {}
+    for metric in pettmp_fut:
+        pettmp_all[metric] = {}
+
+
     for gran_coord in pettmp_hist['precipitation']:
 
         if gran_coord not in pettmp_fut['precipitation']:
@@ -48,28 +57,12 @@ def join_hist_fut_to_sim_wthr(climgen, pettmp_hist, pettmp_fut):
             if pettmp_hist[metric][gran_coord] is None:
                 continue
 
-            pettmp_sim[metric] = {}
-            if indx_hist_end is not None:
-                if indx_hist_end == -1:
-                    hist_seg = pettmp_hist[metric][gran_coord][indx_hist_strt:]
-                else:
-                    hist_seg = pettmp_hist[metric][gran_coord][indx_hist_strt:indx_hist_end]
+            hist_seg = pettmp_hist[metric][gran_coord][:-indx_hist_abbrev]
+            fut_seg = pettmp_fut[metric][gran_coord][:]
 
-                pettmp_sim[metric][gran_coord] = hist_seg
-                del hist_seg
+            pettmp_all[metric][gran_coord] = hist_seg + fut_seg
 
-            if indx_fut_end is not None:
-                if indx_fut_end == -1:
-                    fut_seg = pettmp_fut[metric][gran_coord][indx_fut_strt:]
-                else:
-                    fut_seg = pettmp_fut[metric][gran_coord][indx_fut_strt:indx_fut_end]
-
-                pettmp_sim[metric][gran_coord] += fut_seg
-                del fut_seg
-
-    pettmp_sim = _apply_start_year_correction(sim_strt_yr, climgen.hist_wthr_set_defn, pettmp_sim)
-
-    return pettmp_sim
+    return pettmp_all
 
 def fetch_wthr_dset_overlap(wthr_set1, wthr_set2):
     """
