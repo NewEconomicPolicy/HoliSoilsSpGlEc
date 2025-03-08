@@ -104,13 +104,15 @@ def generate_all_weather(form):
     dset_strt_yr = climgen.fut_wthr_set_defn['year_start']
     dset_end_yr = climgen.fut_wthr_set_defn['year_end']
     nmnths = (dset_end_yr - dset_strt_yr + 1) * 12
-    pettmp_fut = climgen.fetch_isimap_NC_data(aoi_indices_fut, dset_strt_yr, nmnths, max_cells)
+    pettmp_fut = climgen.fetch_isimip_NC_data(aoi_indices_fut, dset_strt_yr, nmnths, max_cells)
     if pettmp_fut is None:
         print('\nFuture data retrieval failed from weather set: ' + this_gcm + '\tScenario: ' + scnr)
         QApplication.processEvents()
 
     keys_hist = list(pettmp_hist['precipitation'].keys())
     keys_fut = list(pettmp_fut['precipitation'].keys())
+    keys_hist, keys_fut = _check_and_sync_keys(keys_fut, keys_hist)
+    
     pettmp_all = join_hist_fut_to_all_wthr(climgen, pettmp_hist, pettmp_fut)
 
     # create weather
@@ -155,6 +157,38 @@ def generate_all_weather(form):
     print('Finished weather generation - total number of sets written: {}'.format(ntotal_wrttn))
 
     return
+
+
+def _check_and_sync_keys(keys_fut, keys_hist):
+    """
+    check future first, then historic
+    """
+    not_in_fut = []
+    new_keys_hist = []
+    for key in keys_hist:
+        if key in keys_fut:
+            new_keys_hist.append(key)
+        else:
+            not_in_fut.append(key)
+
+    not_in_hist = []
+    new_keys_fut = []
+    for key in keys_fut:
+        if key in keys_hist:
+            new_keys_fut.append(key)
+        else:
+            not_in_hist.append(key)
+
+    # ======= report =========
+    if len(not_in_fut) > 0:
+        print('keys not in future: {}'.format(not_in_fut))
+        
+    if len(not_in_hist) > 0:
+        print('keys not in history: {}'.format(not_in_hist))
+    
+    QApplication.processEvents()
+
+    return new_keys_hist, new_keys_fut
 
 def make_avemet_file(clim_dir, lta_precip, lta_pet, lta_tmean):
     """
@@ -341,7 +375,6 @@ def _make_lta_file(site, clim_dir):
     """
     write long term average climate section of site.txt file
     """
-
     lines = []
     lta_precip, lta_tmean = site.lta_precip, site.lta_tmean
     if lta_precip is None or lta_tmean is None:

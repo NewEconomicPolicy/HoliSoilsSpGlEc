@@ -301,14 +301,14 @@ class ClimGenNC(object,):
         aoi_indices_hist = lat_indices_hist + lon_indices_hist
         return aoi_indices_fut, aoi_indices_hist
 
-    def fetch_isimap_NC_data(self, aoi_indices, dset_strt_yr, nmnths, max_cells=MAX_CELLS):
+    def fetch_isimip_NC_data(self, aoi_indices, dset_strt_yr, nmnths, max_cells=MAX_CELLS):
         """
         fetch precipitation - units: kg m-2 s-1, and temperature - units: Kelvin, for a given lat/long AOI
             for ISIMAP precipitation - convert kg m-2 s-1 to mm month-1
             1 kg water = 1000 mm-3      1 m-2 = 1 million mm-2 so 1 kg m-2 = 1000 / 1000000  = 0.001 mm
             so to convert to mm day-1 = 0.001 * NUMSECSDAY = 86.4
         """
-        cnvrt_isimap_pr = 1.0 * NUMSECSDAY
+        cnvrt_isimip_pr = 1.0 * NUMSECSDAY
 
         # warnings.simplefilter('default')
         lat_indx_min, lat_indx_max, lon_indx_min, lon_indx_max = aoi_indices
@@ -363,16 +363,16 @@ class ClimGenNC(object,):
                     # ============================
                     if pettmp[varnam_map][key] == null_value:
                         if varname == 'tas':
-                            pettmp[varnam_map][key] = [round(float(val) - 273.15, 1) for val in slice[:, ilat, ilon]]
+                            pettmp[varnam_map][key] = [round(float(val) - 273.15, 2) for val in slice[:, ilat, ilon]]
                         else:
                             # precipitation - convert kg m-2 s-1 to mm month-1
                             # ================================================
-                            # pettmp[varnam_map][key] =  = [round(val * ndays * cnvrt_isimap_pr, 1) for val, ndays in
+                            # pettmp[varnam_map][key] =  = [round(val * ndays * cnvrt_isimip_pr, 1) for val, ndays in
                             #                                                zip(slice[:, ilat, ilon], days_per_month)]
                             pettmp[varnam_map][key] = []
                             for val, ndays in zip(slice[:, ilat, ilon], days_per_month):
-                                # val_mm = round(val * ndays * cnvrt_isimap_pr, 3)
-                                val_mm = round(val * cnvrt_isimap_pr, 3)
+                                # val_mm = round(val * ndays * cnvrt_isimip_pr, 3)
+                                val_mm = round(val * cnvrt_isimip_pr, 2)
                                 pettmp[varnam_map][key].append(val_mm)
 
                     pettmp['lat_lons'][key] = [lat, lon]
