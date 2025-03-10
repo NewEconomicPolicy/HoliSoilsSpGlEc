@@ -191,16 +191,13 @@ def make_wthr_files(site, lat, gran_coord, climgen, pettmp_hist, pettmp_all):
 
     # calculate historic average weather
     # ==================================
-    pettmp_hist_site = {}
-    pettmp_hist_site['precip'] = pettmp_hist['precipitation'][gran_coord]
-    pettmp_hist_site['tas'] = pettmp_hist['temperature'][gran_coord]
+    pettmp_hist_site = {'precip': pettmp_hist['precipitation'][gran_coord],
+                        'tas': pettmp_hist['temperature'][gran_coord]}
     hist_lta_precip, hist_lta_tmean, hist_weather_recs = fetch_long_term_ave_wthr_recs(climgen, pettmp_hist_site)
 
     # write a single set of met files for all simulations for this grid cell
     # ======================================================================
-    pettmp_all_site = {}
-    pettmp_all_site['precip'] = pettmp_all['precipitation'][gran_coord]
-    pettmp_all_site['tas'] = pettmp_all['temperature'][gran_coord]
+    pettmp_all_site = {'precip': pettmp_all['precipitation'][gran_coord], 'tas': pettmp_all['temperature'][gran_coord]}
 
     year_start = climgen.hist_wthr_set_defn['year_start']
     met_fnames = make_met_files(clim_dir, lat, climgen, pettmp_all_site, year_start)  # all weather
