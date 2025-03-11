@@ -275,9 +275,9 @@ def _check_wthr_cell_exstnc(sims_dir, climgen, lat, lon, read_lta_flag=False):
                 integrity_flag = True
                 hist_lta_recs, met_fnames = None, None
             else:
-                if 'lta_ave.txt' in fns:
+                if LTA_RECS_FN in fns:
                     if read_lta_flag:
-                        lta_ave_fn = join(clim_dir, 'lta_ave.txt')
+                        lta_ave_fn = join(clim_dir, LTA_RECS_FN)
                         hist_lta_recs = []
                         with open(lta_ave_fn, 'r') as fave:
                             for line in fave:
@@ -368,7 +368,7 @@ def write_avemet_files(form):
     print('Finished AVEMET creation - checked: {} cells'.format(nwrote))
     return
 
-def _make_lta_file(site, clim_dir):
+def _(site, clim_dir):
     """
     write long term average climate section of site.txt file
     """
@@ -383,7 +383,7 @@ def _make_lta_file(site, clim_dir):
     for tmean, month in zip(lta_tmean, site.months):
         lines.append(_make_line('{}'.format(tmean), '{} long term average monthly temperature [mm]'.format(month)))
 
-    lta_ave_fn = join(clim_dir, 'lta_ave.txt')
+    lta_ave_fn = join(clim_dir, LTA_RECS_FN)
     with open(lta_ave_fn, 'w') as fhand:
         fhand.writelines(lines)
 
