@@ -368,7 +368,7 @@ def write_avemet_files(form):
     print('Finished AVEMET creation - checked: {} cells'.format(nwrote))
     return
 
-def _(site, clim_dir):
+def _make_lta_file(site, clim_dir):
     """
     write long term average climate section of site.txt file
     """
