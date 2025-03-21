@@ -15,6 +15,7 @@ __author__ = 's03mm5'
 from time import time
 from os.path import join, normpath, isdir, split
 from os import listdir, walk, makedirs
+from pandas import Series, read_excel, DataFrame
 from PyQt5.QtWidgets import QApplication
 
 from getClimGenNC_ltd import ClimGenNC
@@ -152,7 +153,17 @@ def generate_all_weather(form):
         if QUICK_FLAG:
             break
 
-        print('Completed weather set: ' + this_gcm + '\tScenario: ' + scnr + '\n')
+    # write coords file
+    # =================
+    coords_fn = join(climgen.wthr_out_dir, 'coords_lookup.csv')
+    lat_lons = pettmp_hist['lat_lons']
+    recs = [[key] + lat_lons[key] for key in lat_lons]
+    df = DataFrame(recs, columns=['gran_coord', 'Lat', 'Lon'])
+    df.to_csv(coords_fn, sep='\t', index=False)
+
+    mess = 'Completed weather set: ' + this_gcm + '\tScenario: ' + scnr + '\n'
+    mess += 'Wrote coordinates lookup file: ' + coords_fn
+    print(mess)
 
     print('Finished weather generation - total number of sets written: {}'.format(ntotal_wrttn))
 
