@@ -7,7 +7,6 @@
 # Licence:     <your licence>
 # -------------------------------------------------------------------------------
 #
-
 __prog__ = 'getClimGenNC.py'
 __author__ = 's03mm5'
 
@@ -39,6 +38,7 @@ GRANULARITY = 120
 weather_resource_permitted = list(['CRU', 'EObs', 'EWEMBI'])
 
 WARNING = '*** Warning *** '
+ERROR_STR = '*** Error *** '
 
 def _consistency_check(pettmp, varnams_mapped):
     """
@@ -125,7 +125,7 @@ class ClimGenNC(object,):
         self.wthr_out_dir = wthr_out_dir
         self.sim_mnthly_flag = sim_mnthly_flag
 
-            # African Monsoon Multidisciplinary Analysis (AMMA) 2050 datasets
+        # African Monsoon Multidisciplinary Analysis (AMMA) 2050 datasets
         # ===============================================================
         if wthr_rsrce in form.amma_2050_allowed_gcms:
             wthr_set_key = wthr_rsrce + '_' + fut_clim_scen
@@ -204,7 +204,7 @@ class ClimGenNC(object,):
         self.lon_min = fut_wthr_set['lon_ll']
         self.lat_min = fut_wthr_set['lat_ll']
         self.longitudes = fut_wthr_set['longitudes']
-        self.latitudes =  fut_wthr_set['latitudes']
+        self.latitudes = fut_wthr_set['latitudes']
         self.pettmp = {}        # dictionary whose keys will reference the climate grid, pt_grid
         self.lgr = form.lgr
 
@@ -226,8 +226,12 @@ class ClimGenNC(object,):
 
         self.sim_start_year = sim_start_year
         self.sim_end_year = sim_end_year
-        self.num_fut_years = sim_end_year - sim_start_year + 1
-        self.fut_ave_file = 'met{}_to_{}_ave.txt'.format(sim_start_year, sim_end_year)
+        self.num_sim_years = sim_end_year - sim_start_year + 1
+
+        self.ave_file = 'met' + str(hist_start_year) + '_' + str(hist_end_year) + 'a.txt'
+
+        self.ave_sim_text_fn = 'met{}_to_{}_ave.txt'.format(sim_start_year, sim_end_year)
+        self.ave_sim_met_fn = 'met' + str(sim_start_year) + '_' + str(sim_end_year) + 'a.txt'
 
     def genLocalGrid(self, bbox, hwsd, snglPntFlag = False):
         """
@@ -797,7 +801,7 @@ class ClimGenNC(object,):
 
         # process historic climate
         # ========================
-        varnams_mapped = {'pre':'precipitation','tmp':'temperature'}
+        varnams_mapped = {'pre': 'precipitation', 'tmp': 'temperature'}
 
         varnams = sorted(varnams_mapped.keys())
 
@@ -877,26 +881,28 @@ class ClimGenNC(object,):
         also create a climate file for each of the simulation years based on average weather from the CRU year range
         """
         func_name = ' create_FutureAverages'
-        full_func_name =  __prog__ +  func_name
+        full_func_name = __prog__ + func_name
 
         sim_start_year = self.sim_start_year
         sim_end_year = self.sim_end_year
+        num_sim_yrs = sim_end_year - sim_start_year + 1
         months = self.months
 
         # skip if already exists
-        ave_met_file = join(normpath(clim_dir), self.fut_ave_file)
-        met_ave_file = join(normpath(clim_dir), self.met_ave_file)
-        if isfile(ave_met_file) and isfile(met_ave_file):
-            self.lgr.info(WARNING + 'Files:\n\t' +  ave_met_file + '\n\talready exist - will overwrite')
+        ave_sim_text_fn = join(normpath(clim_dir), self.ave_sim_text_fn)
+        ave_sim_met_fn = join(normpath(clim_dir), self.ave_sim_met_fn)
+        if isfile(ave_sim_text_fn) and isfile(ave_sim_met_fn):
+            mess = 'Files:\n\t' + ave_sim_met_fn + ' and ' + ave_sim_text_fn + '\n\talready exist - will overwrite'
+            self.lgr.info(WARNING + mess)
 
-        # read  precipitation and temperature
-        fut_precip = {}
-        fut_tmean = {}
+        # read precipitation and temperature
+        sim_precip = {}
+        sim_tmean = {}
         for month in months:
-            fut_precip[month] = 0.0
-            fut_tmean[month] = 0.0
+            sim_precip[month] = 0.0
+            sim_tmean[month] = 0.0
 
-        for year in range(sim_start_year, sim_end_year):
+        for year in range(sim_start_year, sim_end_year + 1):
             fname = 'met{0}s.txt'.format(year)
             met_fpath = join(clim_dir, fname)
 
@@ -909,38 +915,39 @@ class ClimGenNC(object,):
 
             for line, month in zip(lines, months):
                 tlst = line.split('\t')
-                fut_precip[month] += float(tlst[1])
-                fut_tmean[month]  += float(tlst[3].rstrip('\r\n'))
+                sim_precip[month] += float(tlst[1])
+                sim_tmean[month] += float(tlst[3].rstrip('\r\n'))
 
         # write stanza for input.txt file consisting of long term average climate
         # =======================================================================
         output = []
-        num_fut_years = self.num_fut_years
+        num_sim_years = self.num_sim_years
         for month in self.months:
-            ave_precip = fut_precip[month]/num_fut_years
-            output.append(_input_txt_line_layout('{}'.format(round(ave_precip,1)), \
+            ave_precip = sim_precip[month]/num_sim_years
+            output.append(_input_txt_line_layout('{}'.format(round(ave_precip, 1)),
                                                 '{} long term average monthly precipitation [mm]'.format(month)))
 
         for month in self.months:
-            ave_tmean = fut_tmean[month]/num_fut_years
-            output.append(_input_txt_line_layout('{}'.format(round(ave_tmean,2)), \
+            ave_tmean = sim_tmean[month]/num_sim_years
+            output.append(_input_txt_line_layout('{}'.format(round(ave_tmean, 2)),
                                                 '{} long term average monthly temperature [degC]'.format(month)))
 
-        # write text file of average weather which will subsequently be included in the input.txt file
+        # write text file of average simulated weather which will subsequently be included in the input.txt file
+        # ======================================================================================================
         try:
-            fhand = open(ave_met_file, 'w')
+            fhand = open(ave_sim_text_fn, 'w')
         except IOError:
-            raise IOError('Unable to open file 0}'.format(ave_met_file))
+            raise IOError(ERROR_STR + 'Unable to open file: ' + ave_sim_text_fn)
         else:
             fhand.writelines(output)
             fhand.close()
 
-        self.lgr.info('Successfully wrote average weather file {} in function {}'.format(ave_met_file, func_name))
+        self.lgr.info('Successfully wrote average weather file {} in function {}'.format(ave_sim_text_fn, func_name))
 
         # write long term average climate file
         # ====================================
-        ave_precip = [round(fut_precip[month]/num_fut_years, 1) for month in months]
-        ave_tmean  = [round(fut_tmean[month]/num_fut_years, 1) for month in months]
+        ave_precip = [round(sim_precip[month]/num_sim_years, 1) for month in months]
+        ave_tmean = [round(sim_tmean[month]/num_sim_years, 1) for month in months]
 
         # pet
         if max(ave_tmean) > 0.0:
@@ -958,7 +965,7 @@ class ClimGenNC(object,):
         for tstep, mean_temp in enumerate(ave_tmean):
             output.append([tstep+1, ave_precip[tstep], pot_evapotrans[tstep], mean_temp])
 
-        with open(met_ave_file, 'w', newline='') as fpout:
+        with open(ave_sim_met_fn, 'w', newline='') as fpout:
             writer = csv.writer(fpout, delimiter='\t')
             writer.writerows(output)
             fpout.close()
@@ -973,6 +980,6 @@ class ClimGenNC(object,):
             site.lta_precip = [round(float(precip), 1) for precip in lta['precip']]
             site.lta_tmean = [round(float(tmean), 1) for tmean in lta['tas']]
 
-        self.lgr.info('Successfully wrote average weather file {} in function {}'.format(met_ave_file, func_name))
+        self.lgr.info('Successfully wrote average weather file {} in function {}'.format(ave_sim_met_fn, func_name))
 
         return 0

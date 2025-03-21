@@ -19,7 +19,7 @@ from pandas import Series, read_excel, DataFrame
 from PyQt5.QtWidgets import QApplication
 
 from getClimGenNC_ltd import ClimGenNC
-from getClimGenFns_ss import (genLocalGrid, open_wthr_NC_sets, fetch_wthr_dset_overlap, join_hist_fut_to_all_wthr)
+from getClimGenFns_ss import (genLocalGrid, fetch_wthr_dset_overlap, join_hist_fut_to_all_wthr)
 from glbl_ecsse_low_level_fns_sv import update_wthr_progress, update_avemet_progress
 from prepare_ecosse_low_level import fetch_long_term_ave_wthr_recs, make_met_files
 from hwsd_soil_class import _gran_coords_from_lat_lon as gran_coords_from_lat_lon
@@ -236,16 +236,13 @@ def make_wthr_files(site, lat, gran_coord, climgen, pettmp_hist, pettmp_all):
 
     # calculate historic average weather
     # ==================================
-    pettmp_hist_site = {}
-    pettmp_hist_site['precip'] = pettmp_hist['precipitation'][gran_coord]
-    pettmp_hist_site['tas'] = pettmp_hist['temperature'][gran_coord]
+    pettmp_hist_site = {'precip': pettmp_hist['precipitation'][gran_coord],
+                        'tas': pettmp_hist['temperature'][gran_coord]}
     hist_lta_precip, hist_lta_tmean, hist_weather_recs = fetch_long_term_ave_wthr_recs(climgen, pettmp_hist_site)
 
     # write a single set of met files for all simulations for this grid cell
     # ======================================================================
-    pettmp_all_site = {}
-    pettmp_all_site['precip'] = pettmp_all['precipitation'][gran_coord]
-    pettmp_all_site['tas'] = pettmp_all['temperature'][gran_coord]
+    pettmp_all_site = {'precip': pettmp_all['precipitation'][gran_coord], 'tas': pettmp_all['temperature'][gran_coord]}
 
     year_start = climgen.hist_wthr_set_defn['year_start']
     met_fnames = make_met_files(clim_dir, lat, climgen, pettmp_all_site, year_start)  # all weather
@@ -289,9 +286,9 @@ def _check_wthr_cell_exstnc(sims_dir, climgen, lat, lon, read_lta_flag=False):
                 integrity_flag = True
                 hist_lta_recs, met_fnames = None, None
             else:
-                if 'lta_ave.txt' in fns:
+                if LTA_RECS_FN in fns:
                     if read_lta_flag:
-                        lta_ave_fn = join(clim_dir, 'lta_ave.txt')
+                        lta_ave_fn = join(clim_dir, LTA_RECS_FN)
                         hist_lta_recs = []
                         with open(lta_ave_fn, 'r') as fave:
                             for line in fave:
@@ -397,7 +394,7 @@ def _make_lta_file(site, clim_dir):
     for tmean, month in zip(lta_tmean, site.months):
         lines.append(_make_line('{}'.format(tmean), '{} long term average monthly temperature [mm]'.format(month)))
 
-    lta_ave_fn = join(clim_dir, 'lta_ave.txt')
+    lta_ave_fn = join(clim_dir, LTA_RECS_FN)
     with open(lta_ave_fn, 'w') as fhand:
         fhand.writelines(lines)
 
