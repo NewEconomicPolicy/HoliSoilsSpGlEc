@@ -33,10 +33,10 @@ from weather_datasets import change_weather_resource
 from initialise_funcs import read_config_file
 from initialise_common_funcs import initiation, build_and_display_studies, write_runsites_config_file
 from litter_and_orchidee_fns import fetch_nc_litter
-from wthr_generation_fns import generate_all_weather
+from wthr_generation_fns import generate_all_weather, make_wthr_coords_lookup
 from set_up_logging import OutLog
 
-STD_BTN_SIZE_100 = 100
+STD_BTN_SIZE_120 = 120
 STD_BTN_SIZE_80 = 80
 STD_FLD_SIZE_180 = 180
 STD_FLD_SIZE_200 = 200
@@ -224,7 +224,7 @@ class Form(QWidget):
         helpText = 'Generate ECOSSE simulation file sets corresponding to ordered HWSD global mapping unit set in CSV file'
         w_create_files.setToolTip(helpText)
         # w_create_files.setEnabled(False)
-        w_create_files.setFixedWidth(STD_BTN_SIZE_100)
+        w_create_files.setFixedWidth(STD_BTN_SIZE_120)
         grid.addWidget(w_create_files, irow, 0, )
         w_create_files.clicked.connect(self.createSimsClicked)
         self.w_create_files = w_create_files
@@ -278,10 +278,19 @@ class Form(QWidget):
         self.w_wthr_only = w_wthr_only
 
         icol += 1
+        w_wthr_lookup = QPushButton("Make wthr lookup")
+        helpText = 'Make weather coords lookup file'
+        w_wthr_lookup.setToolTip(helpText)
+        w_wthr_lookup.setFixedWidth(STD_BTN_SIZE_120)
+        grid.addWidget(w_wthr_lookup, irow, icol)
+        w_wthr_lookup.clicked.connect(self.makeWthrLookupClicked)
+        self.w_wthr_lookup = w_wthr_lookup
+
+        icol += 1
         w_soil_outpts = QPushButton("Make soil files")
         helpText = 'Generate CSV data of soil carbon (Dominant), pH and bulk density for the HoliSoils project'
         w_soil_outpts.setToolTip(helpText)
-        w_soil_outpts.setFixedWidth(STD_BTN_SIZE_100)
+        w_soil_outpts.setFixedWidth(STD_BTN_SIZE_120)
         grid.addWidget(w_soil_outpts, irow, icol)
         w_soil_outpts.clicked.connect(self.genSoilOutptsClicked)
         self.w_soil_outpts = w_soil_outpts
@@ -290,7 +299,7 @@ class Form(QWidget):
         w_soil_nc = QPushButton("Make soil NC")
         helpText = 'Generate NetCDF file of soil carbon (Dominant), pH and bulk density for both layers'
         w_soil_nc.setToolTip(helpText)
-        w_soil_nc.setFixedWidth(STD_BTN_SIZE_100)
+        w_soil_nc.setFixedWidth(STD_BTN_SIZE_120)
         grid.addWidget(w_soil_nc, irow, icol)
         w_soil_nc.clicked.connect(self.genSoilNcClicked)
         self.w_soil_nc = w_soil_nc
@@ -308,7 +317,7 @@ class Form(QWidget):
         w_clear = QPushButton("Clear window", self)
         helpText = 'Clear reporting window'
         w_clear.setToolTip(helpText)
-        w_clear.setFixedWidth(STD_BTN_SIZE_100)
+        w_clear.setFixedWidth(STD_BTN_SIZE_120)
         w_clear.clicked.connect(self.clearReporting)
         grid.addWidget(w_clear, irow, icol)
 
@@ -368,6 +377,13 @@ class Form(QWidget):
 
         self.combo10w.currentIndexChanged[str].connect(self.weatherResourceChanged)
 
+    def makeWthrLookupClicked(self):
+        """
+        Make weather coords lookup file
+        """
+        make_wthr_coords_lookup(self)
+
+        return
     def gnrtWthrClicked(self):
         """
         generate weather for all regions, scenarios and GCMs

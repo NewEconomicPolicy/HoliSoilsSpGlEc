@@ -39,6 +39,55 @@ LTA_RECS_FN = 'lta_ave.txt'
 
 SPACER_LEN = 12
 
+def make_wthr_coords_lookup(form):
+    """
+    C
+    """
+    func_name = __prog__ + ' ClimGenNC __init__'
+
+    if not hasattr(form, 'combo10'):
+        print(ERROR_STR + 'This function ' + func_name + ' requires attribute combo10')
+        QApplication.processEvents()
+        return -1
+
+    fut_clim_scen = form.combo10.currentText()
+    wthr_out_dir = join(split(form.sims_dir)[0], 'Wthr', fut_clim_scen)
+    if not isdir(wthr_out_dir):
+        makedirs(wthr_out_dir)
+
+    for directory, subdirs_raw, files in walk(wthr_out_dir):
+        num_sims = len(subdirs_raw)
+        break
+
+    if num_sims == 0:
+        print(WARNING_STR + 'no sub-directories under path ' + wthr_out_dir)
+        QApplication.processEvents()
+        return
+
+    #
+    # ===============================================================
+    recs = []
+    for gran_coord in subdirs_raw:
+        if gran_coord.find('_') == -1:
+            print(WARNING_STR + 'non compliant directory found in weather directory ' + join(wthr_out_dir, gran_coord))
+            QApplication.processEvents()
+        else:
+            gran_lat, gran_lon = gran_coord.split('_')
+            lat = 90.0 - int(gran_lat) / GRANULARITY
+            lon = (int(gran_lon) / GRANULARITY) - 180.0
+            recs.append([gran_coord, lat, lon])
+
+    # write coords file
+    # =================
+    coords_fn = join(wthr_out_dir, 'coords_lookup.csv')
+    df = DataFrame(recs, columns=['gran_coord', 'Lat', 'Lon'])
+    df.to_csv(coords_fn, sep='\t', index=False)
+    mess = 'Wrote coordinates lookup file: ' + coords_fn
+    print(mess)
+    QApplication.processEvents()
+
+    return
+
 def generate_all_weather(form):
     """
     C
@@ -84,8 +133,7 @@ def generate_all_weather(form):
 
     # for each GCM and SSP dataset group e.g. UKESM1-0-LL 585
     # =======================================================
-    print('')
-    ntotal_wrttn, ncmpltd, nalrdys, skipped = 4*[0]
+    print('')    
     last_time = time()
     num_band = -999
 
@@ -118,57 +166,40 @@ def generate_all_weather(form):
 
     # create weather
     # ==============
+    nwrttn = 0    
     site_obj = MakeSiteObj(form, climgen)
     for gran_coord in keys_hist:
-        lat, lon = pettmp_hist['lat_lons'][gran_coord]
-        clim_dir = make_wthr_files(site_obj, lat, gran_coord, climgen, pettmp_hist, pettmp_all)
-        ncmpltd += 1
-        ntotal_wrttn += 1
-
+        
         if gran_coord in pettmp_fut['precipitation']:
+            lat, lon = pettmp_hist['lat_lons'][gran_coord]
+            clim_dir = make_wthr_files(site_obj, lat, gran_coord, climgen, pettmp_hist, pettmp_all)
             write_csv_wthr_file(form.lgr, study, this_gcm, scnr, lat, lon, sim_start_year, sim_end_year,
                         pettmp_fut['precipitation'][gran_coord], pettmp_fut['temperature'][gran_coord], clim_dir)
+            nwrttn += 1
+            if nwrttn >= max_cells:
+                print('\nFinished checking after {} cells completed'.format(nwrttn))
+                QApplication.processEvents()
+                break
 
-        last_time = update_wthr_progress(last_time, ncmpltd)
-        if ncmpltd >= max_cells:
-            break
+        last_time = update_wthr_progress(last_time, nwrttn)
 
-        # finished this latitude band - report progress
-        # =============================================
-        mess = 'already existing: {}\tskipped: {}'.format(nalrdys, skipped)
-        form.lgr.info(mess)
-        print(mess)
-
-        if ncmpltd >= max_cells:
-            print('\nFinished checking after {} cells completed'.format(ncmpltd))
-            break
-
-        # close NC files
-        # ==============
-        """
-        for metric in list(['precip', 'tas']):
-            hist_wthr_dsets[metric].close()
-            fut_wthr_dsets[metric].close()
-        """
-        if QUICK_FLAG:
-            break
+    # close NC files
+    # ==============
+    """
+    for metric in list(['precip', 'tas']):
+        hist_wthr_dsets[metric].close()
+        fut_wthr_dsets[metric].close()
+    """
 
     # write coords file
     # =================
-    coords_fn = join(climgen.wthr_out_dir, 'coords_lookup.csv')
-    lat_lons = pettmp_hist['lat_lons']
-    recs = [[key] + lat_lons[key] for key in lat_lons]
-    df = DataFrame(recs, columns=['gran_coord', 'Lat', 'Lon'])
-    df.to_csv(coords_fn, sep='\t', index=False)
-
-    mess = 'Completed weather set: ' + this_gcm + '\tScenario: ' + scnr + '\n'
-    mess += 'Wrote coordinates lookup file: ' + coords_fn
+    make_wthr_coords_lookup(form)
+    mess = 'Completed weather set: ' + this_gcm + '\tScenario: ' + scnr + '\n'   
     print(mess)
 
-    print('Finished weather generation - total number of sets written: {}'.format(ntotal_wrttn))
+    print('Finished weather generation - total number of sets written: {}'.format(nwrttn))
 
     return
-
 
 def _check_and_sync_keys(keys_fut, keys_hist):
     """
